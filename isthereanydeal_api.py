@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
+
 from models import GamePrice
 
 
@@ -55,7 +56,7 @@ def _get_games_ids(games: list[str]) -> dict[str, str]:
 
     return {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
 
-def get_sale_games(games_names: list[str]) -> list[GamePrice]:
+def get_sale_games_itad(games_names: list[str]) -> list[GamePrice]:
     games = _get_games_ids(games_names)
     games_ids = [game_id for game_id in games.values() if isinstance(game_id, str)]
 
