@@ -59,3 +59,18 @@ class Database:
         except Exception as e:
             print(f"An error occurred: {e}")
             return []
+        
+    def in_blacklist(self, url: str) -> bool:
+        try:
+            with psycopg.connect(self.connection_string) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(1) > 0 FROM blacklist WHERE url = %s;",
+                        (url,)
+                    )
+                    row = cur.fetchone()
+
+                    return row[0] if row else False
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return []

@@ -20,7 +20,7 @@ class BuscapeProvider(SalesScrapingProvider):
             sentence_transformer=sentence_transformer
         )
     
-    def _get_prices(self, game: str, html: BeautifulSoup) -> list[GamePrice]:
+    def get_prices(self, game: str, html: BeautifulSoup) -> list[GamePrice]:
         prices: list[GamePrice] = []
 
         script = html.find("script", id="__NEXT_DATA__")
@@ -41,6 +41,9 @@ class BuscapeProvider(SalesScrapingProvider):
                 continue
 
             product_url = self.get_url() + product["url"]
+
+            if self.url_in_blacklist(product_url):
+                continue
 
             game_price = GamePrice(
                 name=product["name"],

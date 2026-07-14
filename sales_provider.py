@@ -44,11 +44,4 @@ class SalesProvider:
             "similarity": "GAME_SIMILARITY"
         })
 
-        is_similary = similarity >= float(config["similarity"])
-        if not is_similary:
-            print(f"Jogo procurado: {game_title}")
-            print(f"Produto encontrado: {product_found_title}")
-            print(f"Similaridade: {similarity}")
-            print("")
-
-        return is_similary
+        return similarity >= float(config["similarity"])

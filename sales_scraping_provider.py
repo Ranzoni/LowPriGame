@@ -6,6 +6,7 @@ from sentence_transformers import SentenceTransformer
 from sales_provider import SalesProvider
 from models import GamePrice
 from environment_variables import load_config
+from database import Database
 
 
 class SalesScrapingProvider(SalesProvider):
@@ -30,18 +31,23 @@ class SalesScrapingProvider(SalesProvider):
             for game in self.games:
                 game_search = f"{game} de {term_to_add}"
                 url = f"{self.get_url()}/{self.search_path}{game_search.replace(" ", "+")}+game"
-                html = self._download_html(url)
+                html = self.__download_html(url)
 
-                prices_found = self._get_prices(game_search, html)
+                prices_found = self.get_prices(game_search, html)
                 for price in prices_found:
                     prices.append(price)
 
         return prices
+    
+    def url_in_blacklist(self, url: str) -> bool:
+        db = Database()
 
-    def _get_prices(self, _: str, __: BeautifulSoup) -> list[GamePrice]:
+        return db.in_blacklist(url)
+
+    def get_prices(self, _: str, __: BeautifulSoup) -> list[GamePrice]:
         return []
 
-    def _download_html(self, url: str) -> BeautifulSoup:
+    def __download_html(self, url: str) -> BeautifulSoup:
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
