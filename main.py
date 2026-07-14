@@ -1,14 +1,18 @@
 import json
 
 from decimal import Decimal
+from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
 
 from sales_provider import SalesProvider
 from email_sender import send_email
-from isthereanydeal_api import get_sale_games_itad
+from isthereanydeal_api import IsThereAnyDealProvider
 from buscape_scraping import BuscapeProvider
 from database import Database
 from models import GamePrice
 
+
+load_dotenv()
 
 def _get_games_list() -> list[str]:
     with open("games.json", encoding="utf-8") as f:
@@ -29,8 +33,11 @@ def _register_prices(games: list[str]):
     pass
 
 def _get_providers(games: list[str]) -> list[SalesProvider]:
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
     return [
-        BuscapeProvider(games)
+        BuscapeProvider(games, model),
+        IsThereAnyDealProvider(games, model)
     ]
 
 def _format_currency(value: Decimal) -> str:
@@ -39,7 +46,6 @@ def _format_currency(value: Decimal) -> str:
     return f"R$ {formatted}"
 
 def _format_game_sale(game_sale: GamePrice) -> str:
-    os_list = ", ".join(game_sale.os_list) if game_sale.os_list else "-"
     platforms = ", ".join(game_sale.platforms) if game_sale.platforms else "-"
     voucher = game_sale.voucher or "-"
 
@@ -50,7 +56,6 @@ def _format_game_sale(game_sale: GamePrice) -> str:
             f"Preço comum: {_format_currency(game_sale.regular_price)}",
             f"Cupom: {voucher}",
             f"Loja: {game_sale.store}",
-            f"Sistemas: {os_list}",
             f"Plataformas: {platforms}",
         ]
     )
@@ -77,16 +82,23 @@ def main() -> None:
     providers = _get_providers(games)
 
     for provider in providers:
+        provider.__url = ''
         sales = provider.get_sale_games()
+        print(f"{type(provider)}: ")
+        print("")
 
         for sale in sales:
             print(f"Jogo: {sale.name}")
             print(f"Preço: {sale.price}")
-            print(f"Preço regular: {sale.regular_price}")
-            print(f"Link: {sale.link}")
+            print(f"Preço comum: {sale.regular_price}")
+            print(f"Cupom: {sale.voucher}",)
             print(f"Loja: {sale.store}")
+            print(f"Link: {sale.link}")
+            print(f"Plataformas: {sale.platforms}")
+            print("--------------------------------------------------")
 
-    # sales = get_sale_games_itad(games)
+        print("")
+
     # email_body = _build_email_body(sales)
 
     # success = send_email("Promoções encontradas!", email_body)

@@ -1,18 +1,23 @@
 import json
 
 from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer
 
 from sales_scraping_provider import SalesScrapingProvider
 from models import GamePrice
+from environment_variables import load_config
 
 
 class BuscapeProvider(SalesScrapingProvider):
-    def __init__(self, games: list[str]):
+    def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
+        config = load_config({
+            "url": "BUSCAPE_URL",
+        })
+
         super().__init__(
-            games,
-            env_variables={
-                "url": "BUSCAPE_URL",
-            }
+            games=games,
+            url=config["url"],
+            sentence_transformer=sentence_transformer
         )
     
     def _get_prices(self, game: str, html: BeautifulSoup) -> list[GamePrice]:
@@ -31,12 +36,12 @@ class BuscapeProvider(SalesScrapingProvider):
             if not self._is_game_looking_for(game, product["name"]):
                 continue
 
-            product_url = self.url + product["url"]
+            product_url = self.get_url() + product["url"]
 
             game_price = GamePrice(
-                name=product["name"] + " - " + product["objectId"],
+                name=product["name"],
                 price=float(product["price"]),
-                regular_price=float(product["price"]),
+                regular_price=0,
                 store=product["bestOffer"]["merchantName"],
                 link=product_url,
             )

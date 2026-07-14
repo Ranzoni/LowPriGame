@@ -1,36 +1,38 @@
-import os
-
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
-from dotenv import load_dotenv
 
 from models import GamePrice
+from environment_variables import load_config
 
 
 class SalesProvider:
-    games: list[str]
-    url: str = ""
-    search_path: str = None
-    key: str | None
-    similarity_model: SentenceTransformer
-
-    def __init__(self, games: list[str], url: str, search_path: str = None, key: str = None):
+    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, search_path: str = None, key: str = None):
         self.games = games
-        self.url = url
+        self.__url = url
+        self.__sentence_transformer = sentence_transformer
         self.search_path = search_path
-        self.key = key
-
-        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.__key = key
 
     def get_sale_games(self) -> list[GamePrice]:
         return []
+    
+    def get_url(self) -> str:
+        return self.__url
+    
+    def get_key(self) -> str:
+        return self.__key
+    
+    def get_sentence_transformer(self) -> SentenceTransformer:
+        return self.__sentence_transformer
 
     def _is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
-        load_dotenv()
-
-        game_title_embedding = self.model.encode(game_title)
-        product_title_embedding = self.model.encode(product_found_title)
+        game_title_embedding = self.__sentence_transformer.encode(game_title)
+        product_title_embedding = self.__sentence_transformer.encode(product_found_title)
 
         similarity = cos_sim(game_title_embedding, product_title_embedding)
 
-        return similarity >= float(os.getenv("GAME_SIMILARITY"))
+        config = load_config({
+            "similarity": "GAME_SIMILARITY"
+        })
+
+        return similarity >= float(config["similarity"])

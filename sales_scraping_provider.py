@@ -1,19 +1,18 @@
 import requests
 
 from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer
 
-from environment_variables import load_config
 from sales_provider import SalesProvider
 from models import GamePrice
 
 
 class SalesScrapingProvider(SalesProvider):
-    def __init__(self, games: list[str], env_variables: dict[str, str]):
-        config = load_config(env_variables)
-
+    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer):
         super().__init__(
             games=games,
-            url=config["url"],
+            url=url,
+            sentence_transformer=sentence_transformer,
             search_path="/search?q="
         )
 
@@ -21,7 +20,7 @@ class SalesScrapingProvider(SalesProvider):
         prices: list[GamePrice] = []
         
         for game in self.games:
-            url = f"{self.url}/{self.search_path}{game.replace(" ", "+")}+game"
+            url = f"{self.get_url()}/{self.search_path}{game.replace(" ", "+")}+game"
             html = self._download_html(url)
 
             prices_found = self._get_prices(game, html)
@@ -33,7 +32,7 @@ class SalesScrapingProvider(SalesProvider):
     def _get_prices(self, _: str, __: BeautifulSoup) -> list[GamePrice]:
         return []
 
-    def _download_html(url: str) -> BeautifulSoup:
+    def _download_html(self, url: str) -> BeautifulSoup:
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
