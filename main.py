@@ -1,6 +1,5 @@
 import json
 
-from decimal import Decimal
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
@@ -40,7 +39,7 @@ def _get_providers(games: list[str]) -> list[SalesProvider]:
         IsThereAnyDealProvider(games, model)
     ]
 
-def _format_currency(value: Decimal) -> str:
+def _format_currency(value: float) -> str:
     formatted = f"{value:,.2f}"
     formatted = formatted.replace(",", "_").replace(".", ",").replace("_", ".")
     return f"R$ {formatted}"

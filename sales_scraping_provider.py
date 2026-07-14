@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 
 from sales_provider import SalesProvider
 from models import GamePrice
+from environment_variables import load_config
 
 
 class SalesScrapingProvider(SalesProvider):
@@ -18,14 +19,22 @@ class SalesScrapingProvider(SalesProvider):
 
     def get_sale_games(self) -> list[GamePrice]:
         prices: list[GamePrice] = []
-        
-        for game in self.games:
-            url = f"{self.get_url()}/{self.search_path}{game.replace(" ", "+")}+game"
-            html = self._download_html(url)
 
-            prices_found = self._get_prices(game, html)
-            for price in prices_found:
-                prices.append(price)
+        config = load_config({
+            "terms_to_add": "TERMS_TO_ADD"
+        })
+
+        terms_to_add = config["terms_to_add"].split(",")
+        
+        for term_to_add in terms_to_add:
+            for game in self.games:
+                game_search = f"{game} de {term_to_add}"
+                url = f"{self.get_url()}/{self.search_path}{game_search.replace(" ", "+")}+game"
+                html = self._download_html(url)
+
+                prices_found = self._get_prices(game_search, html)
+                for price in prices_found:
+                    prices.append(price)
 
         return prices
 

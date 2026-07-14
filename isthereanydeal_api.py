@@ -1,7 +1,6 @@
 import logging
 import requests
 
-from decimal import Decimal
 from pydantic import BaseModel
 from typing import Optional
 from sentence_transformers import SentenceTransformer
@@ -92,10 +91,10 @@ class ApiShopResponse(BaseModel):
     name: str
 
 class ApiPriceResponse(BaseModel):
-    amount: Decimal
+    amount: float
 
 class ApiRegularPriceResponse(BaseModel):
-    amount: Decimal
+    amount: float
 
 class ApiDrmResponse(BaseModel):
     name: Optional[str]

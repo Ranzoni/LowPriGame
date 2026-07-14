@@ -35,6 +35,10 @@ class BuscapeProvider(SalesScrapingProvider):
         for product in products:
             if not self._is_game_looking_for(game, product["name"]):
                 continue
+            
+            invalid_terms_found = [term_to_ignore for term_to_ignore in self.get_terms_to_ignore() if term_to_ignore.lower() in str(product["name"]).lower()]
+            if invalid_terms_found:
+                continue
 
             product_url = self.get_url() + product["url"]
 

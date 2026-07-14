@@ -1,12 +1,9 @@
-from decimal import Decimal
-
-
 class GamePrice:
     def __init__(
             self,
             name: str,
-            price: Decimal,
-            regular_price: Decimal,
+            price: float,
+            regular_price: float,
             store: str,
             link: str = None,
             voucher: str = None,

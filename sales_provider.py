@@ -13,6 +13,12 @@ class SalesProvider:
         self.search_path = search_path
         self.__key = key
 
+        config = load_config({
+            "terms_to_ignore": "TERMS_TO_IGNORE"
+        })
+
+        self.__terms_to_ignore: list[str] = config["terms_to_ignore"].split(",")
+
     def get_sale_games(self) -> list[GamePrice]:
         return []
     
@@ -24,6 +30,9 @@ class SalesProvider:
     
     def get_sentence_transformer(self) -> SentenceTransformer:
         return self.__sentence_transformer
+    
+    def get_terms_to_ignore(self) -> list[str]:
+        return self.__terms_to_ignore
 
     def _is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
         game_title_embedding = self.__sentence_transformer.encode(game_title)
@@ -35,4 +44,11 @@ class SalesProvider:
             "similarity": "GAME_SIMILARITY"
         })
 
-        return similarity >= float(config["similarity"])
+        is_similary = similarity >= float(config["similarity"])
+        if not is_similary:
+            print(f"Jogo procurado: {game_title}")
+            print(f"Produto encontrado: {product_found_title}")
+            print(f"Similaridade: {similarity}")
+            print("")
+
+        return is_similary
