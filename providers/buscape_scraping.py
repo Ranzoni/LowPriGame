@@ -3,9 +3,9 @@ import json
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 
-from sales_scraping_provider import SalesScrapingProvider
-from models import GamePrice
-from environment_variables import load_config
+from shared.sales_scraping_provider import SalesScrapingProvider
+from shared.models import GamePrice
+from infra.environment_variables import load_config
 
 
 class BuscapeProvider(SalesScrapingProvider):

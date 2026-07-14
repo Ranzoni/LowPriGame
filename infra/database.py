@@ -1,6 +1,6 @@
 import psycopg
 
-from environment_variables import load_config
+from infra.environment_variables import load_config
 
 
 class Database:

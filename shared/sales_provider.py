@@ -1,8 +1,8 @@
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 
-from models import GamePrice
-from environment_variables import load_config
+from shared.models import GamePrice
+from infra.environment_variables import load_config
 
 
 class SalesProvider:

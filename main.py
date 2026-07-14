@@ -3,12 +3,12 @@ import json
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
-from sales_provider import SalesProvider
-from email_sender import send_email
-from isthereanydeal_api import IsThereAnyDealProvider
-from buscape_scraping import BuscapeProvider
-from database import Database
-from models import GamePrice
+from shared.sales_provider import SalesProvider
+from shared.models import GamePrice
+from infra.email_sender import send_email
+from infra.database import Database
+from providers.isthereanydeal_api import IsThereAnyDealProvider
+from providers.buscape_scraping import BuscapeProvider
 
 
 load_dotenv()
@@ -55,6 +55,7 @@ def _format_game_sale(game_sale: GamePrice) -> str:
             f"Preço comum: {_format_currency(game_sale.regular_price)}",
             f"Cupom: {voucher}",
             f"Loja: {game_sale.store}",
+            f"Link: {game_sale.link}",
             f"Plataformas: {platforms}",
         ]
     )
@@ -78,32 +79,18 @@ def main() -> None:
     _register_games(games)
     _register_prices(games)
 
+    games_price = []
+
     providers = _get_providers(games)
-
     for provider in providers:
-        provider.__url = ''
-        sales = provider.get_sale_games()
-        print(f"{type(provider)}: ")
-        print("")
+        games_price.extend(provider.get_sale_games())
 
-        for sale in sales:
-            print(f"Jogo: {sale.name}")
-            print(f"Preço: {sale.price}")
-            print(f"Preço comum: {sale.regular_price}")
-            print(f"Cupom: {sale.voucher}",)
-            print(f"Loja: {sale.store}")
-            print(f"Link: {sale.link}")
-            print(f"Plataformas: {sale.platforms}")
-            print("--------------------------------------------------")
+    email_body = _build_email_body(games_price)
 
-        print("")
+    success = send_email("Promoções encontradas!", email_body)
 
-    # email_body = _build_email_body(sales)
-
-    # success = send_email("Promoções encontradas!", email_body)
-
-    # if not success:
-    #     raise SystemExit("Falha ao enviar e-mail")
+    if not success:
+        raise SystemExit("Falha ao enviar e-mail")
 
 if __name__ == "__main__":
     main()

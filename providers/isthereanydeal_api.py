@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from typing import Optional
 from sentence_transformers import SentenceTransformer
 
-from models import GamePrice
-from sales_provider import SalesProvider
-from environment_variables import load_config
+from shared.models import GamePrice
+from shared.sales_provider import SalesProvider
+from infra.environment_variables import load_config
 
 
 class IsThereAnyDealProvider(SalesProvider):
@@ -80,7 +80,8 @@ class IsThereAnyDealProvider(SalesProvider):
                 regular_price=sale.current.regular.amount,
                 voucher=sale.current.voucher,
                 store=sale.current.shop.name,
-                platforms=platforms
+                platforms=platforms,
+                link=sale.current.url
             )
 
             sales.append(game_price)
@@ -109,6 +110,7 @@ class ApiCurrentResponse(BaseModel):
     voucher: Optional[str]
     drm: list[ApiDrmResponse]
     platforms: list[ApiPlatformsResponse]
+    url: str
 
 class ApiPricesResponse(BaseModel):
     id: str

@@ -3,10 +3,10 @@ import requests
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 
-from sales_provider import SalesProvider
-from models import GamePrice
-from environment_variables import load_config
-from database import Database
+from shared.sales_provider import SalesProvider
+from shared.models import GamePrice
+from infra.environment_variables import load_config
+from infra.database import Database
 
 
 class SalesScrapingProvider(SalesProvider):
