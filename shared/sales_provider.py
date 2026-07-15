@@ -6,12 +6,13 @@ from infra.environment_variables import load_config
 
 
 class SalesProvider:
-    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, search_path: str = None, key: str = None):
+    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, search_path: str = None, key: str = None, timeout: int = None):
         self.games = games
         self.__url = url
         self.__sentence_transformer = sentence_transformer
         self.search_path = search_path
         self.__key = key
+        self.__timeout = timeout
 
         config = load_config({
             "terms_to_ignore": "TERMS_TO_IGNORE"
@@ -22,17 +23,25 @@ class SalesProvider:
     def get_sale_games(self) -> list[GamePrice]:
         return []
     
-    def get_url(self) -> str:
+    @property
+    def url(self) -> str:
         return self.__url
     
-    def get_key(self) -> str:
+    @property
+    def key(self) -> str:
         return self.__key
     
-    def get_sentence_transformer(self) -> SentenceTransformer:
+    @property
+    def timeout(self) -> int:
+        return self.__timeout
+    
+    @property
+    def sentence_transformer(self) -> SentenceTransformer:
         return self.__sentence_transformer
     
-    def get_terms_to_ignore(self) -> list[str]:
-        return self.__terms_to_ignore
+    def has_terms_to_ignore(self, value: str) -> bool: 
+        invalid_terms_found = [term_to_ignore for term_to_ignore in self.__terms_to_ignore if term_to_ignore.lower() in value.lower()]
+        return bool(invalid_terms_found)
 
     def _is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
         game_title_embedding = self.__sentence_transformer.encode(game_title)

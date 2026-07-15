@@ -17,26 +17,28 @@ class IsThereAnyDealProvider(SalesProvider):
         config = load_config({
             "url": "ISTHERANYDEAL_API_URL",
             "key": "ISTHERANYDEAL_API_KEY",
+            "timeout": "ISTHERANYDEAL_API_TIMEOUT"
         })
 
         super().__init__(
             games=games,
             url=config["url"], 
             sentence_transformer=sentence_transformer,
-            key=config["key"]
+            key=config["key"],
+            timeout=int(config["timeout"])
         )
 
     def _post_api(self, path: str, payload, params = None):
-        url = self.get_url() + path
+        url = self.url + path
 
         response = requests.post(
             url,
             json=payload,
             headers={
-                "ITAD-API-Key": self.get_key()
+                "ITAD-API-Key": self.key
             },
             params=params,
-            timeout=10,
+            timeout=self.timeout,
         )
         
         response.raise_for_status()

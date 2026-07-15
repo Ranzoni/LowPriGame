@@ -20,12 +20,16 @@ def _get_games_list() -> list[str]:
 def _register_games(games: list[str]):
     db = Database()
     
-    games_registered = db.get_games_by_name()
+    games_registered = db.get_games()
 
-    games_removed = [register for register in games_registered if register not in games]
-    games_not_registered = [game for game in games if game not in games_registered]
+    games_removed = [register for register in games_registered if register.name not in games]
 
-    db.delete_games(games_removed)
+    games_not_registered = [
+        game for game in games
+        if game not in {register.name for register in games_registered}
+    ]
+
+    db.delete_games([game.id for game in games_removed])
     db.add_games(games_not_registered)
 
 def _register_prices(games: list[str]):
@@ -62,7 +66,7 @@ def _format_game_sale(game_sale: GamePrice) -> str:
 
 def _build_email_body(sales: list[GamePrice]) -> str:
     if not sales:
-        return "Nenhuma promocao foi encontrada no momento."
+        return "Nenhuma promoção foi encontrada no momento."
 
     sections = ["Promoções encontradas:", ""]
 
@@ -84,6 +88,9 @@ def main() -> None:
     providers = _get_providers(games)
     for provider in providers:
         games_price.extend(provider.get_sale_games())
+
+    if not games_price:
+        return
 
     email_body = _build_email_body(games_price)
 
