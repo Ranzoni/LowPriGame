@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 from sentence_transformers import SentenceTransformer
 
-from shared.models import GamePrice
+from shared.models import GamePrice, PriceInfo
+from shared.functions import calculate_discount
 from shared.sales_provider import SalesProvider
 from infra.environment_variables import load_config
 
@@ -53,7 +54,7 @@ class IsThereAnyDealProvider(SalesProvider):
 
         return {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
 
-    def get_sale_games(self) -> list[GamePrice]:
+    def get_sales_games(self) -> list[GamePrice]:
         games_found = self._get_games_ids()
         games_ids = [game_id for game_id in games_found.values() if isinstance(game_id, str)]
 
@@ -74,12 +75,21 @@ class IsThereAnyDealProvider(SalesProvider):
                     title = key
                     break
 
-            platforms = [drm.name for drm in sale.current.drm]
+            platforms = [drm.name for drm in sale.current.drm if drm.name]
+
+            discount, discount_percentage = calculate_discount(
+                regular_price=sale.current.regular.amount,
+                price_to_compare=sale.current.price.amount
+            )
 
             game_price = GamePrice(
                 name=title,
                 price=sale.current.price.amount,
-                regular_price=sale.current.regular.amount,
+                price_info=PriceInfo(
+                    regular_price=sale.current.regular.amount,
+                    discont=discount,
+                    discount_percentage=discount_percentage
+                ),
                 voucher=sale.current.voucher,
                 store=sale.current.shop.name,
                 platforms=platforms,

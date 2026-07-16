@@ -1,18 +1,17 @@
-class GamePrice:
-    def __init__(
-            self,
-            name: str,
-            price: float,
-            regular_price: float,
-            store: str,
-            link: str = None,
-            voucher: str = None,
-            platforms: list[str] = None
-        ):
-        self.name = name
-        self.price = price
-        self.regular_price = regular_price
-        self.voucher = voucher
-        self.store = store
-        self.link = link
-        self.platforms = platforms
+from pydantic import BaseModel
+from typing import Optional
+
+
+class PriceInfo(BaseModel):
+    regular_price: float
+    discont: float
+    discount_percentage: float
+
+class GamePrice(BaseModel):
+    name: str
+    price: float
+    price_info: PriceInfo
+    store: str
+    link: Optional[str] = None
+    voucher: Optional[str] = None
+    platforms: Optional[list[str]] = None

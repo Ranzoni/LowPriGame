@@ -20,7 +20,7 @@ class SalesProvider:
 
         self.__terms_to_ignore: list[str] = config["terms_to_ignore"].split(",")
 
-    def get_sale_games(self) -> list[GamePrice]:
+    def get_sales_games(self) -> list[GamePrice]:
         return []
     
     @property
@@ -43,7 +43,7 @@ class SalesProvider:
         invalid_terms_found = [term_to_ignore for term_to_ignore in self.__terms_to_ignore if term_to_ignore.lower() in value.lower()]
         return bool(invalid_terms_found)
 
-    def _is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
+    def is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
         game_title_embedding = self.__sentence_transformer.encode(game_title)
         product_title_embedding = self.__sentence_transformer.encode(product_found_title)
 

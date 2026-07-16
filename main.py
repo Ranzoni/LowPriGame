@@ -4,6 +4,7 @@ from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
 from shared.sales_provider import SalesProvider
+from shared.sales_scraping_provider import SalesScrapingProvider
 from shared.models import GamePrice
 from infra.email_sender import send_email
 from infra.database import Database
@@ -32,8 +33,12 @@ def _register_games(games: list[str]):
     db.delete_games([game.id for game in games_removed])
     db.add_games(games_not_registered)
 
-def _register_prices(games: list[str]):
-    pass
+def _get_scraping_providers(games: list[str]) -> list[SalesScrapingProvider]:
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+    return [
+        BuscapeProvider(games, model)
+    ]
 
 def _get_providers(games: list[str]) -> list[SalesProvider]:
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -43,10 +48,19 @@ def _get_providers(games: list[str]) -> list[SalesProvider]:
         IsThereAnyDealProvider(games, model)
     ]
 
+def _register_prices(games: list[str]):
+    providers = _get_scraping_providers(games)
+    for provider in providers:
+        provider.register_prices()
+
 def _format_currency(value: float) -> str:
     formatted = f"{value:,.2f}"
     formatted = formatted.replace(",", "_").replace(".", ",").replace("_", ".")
     return f"R$ {formatted}"
+
+def _format_percentual(value: float) -> str:
+    formatted = f"{value:,.2f}"
+    return f"{formatted}%"
 
 def _format_game_sale(game_sale: GamePrice) -> str:
     platforms = ", ".join(game_sale.platforms) if game_sale.platforms else "-"
@@ -56,7 +70,9 @@ def _format_game_sale(game_sale: GamePrice) -> str:
         [
             f"Jogo: {game_sale.name}",
             f"Preço: {_format_currency(game_sale.price)}",
-            f"Preço comum: {_format_currency(game_sale.regular_price)}",
+            f"Preço comum: {_format_currency(game_sale.price_info.regular_price)}",
+            f"Desconto: {_format_currency(game_sale.price_info.discont)}",
+            f"Desconto (%): {_format_percentual(game_sale.price_info.discount_percentage)}",
             f"Cupom: {voucher}",
             f"Loja: {game_sale.store}",
             f"Link: {game_sale.link}",
@@ -79,15 +95,15 @@ def _build_email_body(sales: list[GamePrice]) -> str:
 
 def main() -> None:
     games = _get_games_list()
+    providers = _get_providers(games)
 
     _register_games(games)
     _register_prices(games)
 
     games_price = []
 
-    providers = _get_providers(games)
     for provider in providers:
-        games_price.extend(provider.get_sale_games())
+        games_price.extend(provider.get_sales_games())
 
     if not games_price:
         return
