@@ -17,12 +17,12 @@ class PriceFound(BaseModel):
     link: str
 
 class SalesScrapingProvider(SalesProvider):
-    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer):
+    def __init__(self, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
         super().__init__(
             games=games,
             url=url,
             sentence_transformer=sentence_transformer,
-            search_path="/search?q="
+            search_path=search_path
         )
 
     def register_prices(self) -> None:
@@ -81,6 +81,8 @@ class SalesScrapingProvider(SalesProvider):
 
                     if price_found.price < regular_price and (not discount_found or discount_found.price > price_found.price):
                         discount_found = self.__handle_discount(
+                            game_name=game_name,
+                            platform=platform,
                             regular_price=regular_price,
                             price_found=price_found
                         )
@@ -137,14 +139,14 @@ class SalesScrapingProvider(SalesProvider):
 
         return calculate_median(prices_history=game_prices_history, last_days=90)
 
-    def __handle_discount(self, regular_price: float, price_found: PriceFound) -> GamePrice:
+    def __handle_discount(self, game_name: str, platform: Platform, regular_price: float, price_found: PriceFound) -> GamePrice:
         discount, discount_percentage = calculate_discount(
             regular_price=regular_price,
             price_to_compare=price_found.price
         )
 
         return GamePrice(
-            name=price_found.product_name,
+            name=game_name,
             price=price_found.price,
             price_info=PriceInfo(
                 regular_price=regular_price,
@@ -153,4 +155,5 @@ class SalesScrapingProvider(SalesProvider):
             ),
             store=price_found.store,
             link=price_found.link,
+            platforms=[platform.name]
         )
