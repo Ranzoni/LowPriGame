@@ -1,11 +1,10 @@
 import requests
 
-from datetime import datetime
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
 
-from shared.sales_provider import SalesProvider
+from providers.sales_provider import SalesProvider
 from shared.models import GamePrice, PriceInfo
 from shared.functions import calculate_median, calculate_discount
 from infra.database import Database, Game, Platform
@@ -34,13 +33,10 @@ class SalesScrapingProvider(SalesProvider):
             for game_name in self.games:
                 game = db.get_game_by_name(game=game_name)
 
-                if not self.__should_update_price_history(game=game, platform=platform):
-                    continue
-
                 game_search_term = self.__get_search_game_term(game=game, platform=platform)
                 html = self.__download_html(game_search=game_search_term)
 
-                prices_found = self._scraping_prices(html=html)
+                prices_found = self._scraping_prices(html)
 
                 products_match_game = [
                     price
@@ -96,16 +92,6 @@ class SalesScrapingProvider(SalesProvider):
 
     def _scraping_prices(self, _: BeautifulSoup) -> list[PriceFound]:
         pass
-
-    def __should_update_price_history(self, game: Game, platform: Platform) -> bool:
-        db = Database()
-
-        game_price_history = db.get_last_game_history(game.id, platform.id)
-        if not game_price_history:
-            return True
-        
-        difference = datetime.now() - game_price_history.updated_at
-        return difference.days < 10
 
     def __get_search_game_term(self, game: Game, platform: Platform) -> str:
         return f"{game.name} de {platform.name}"

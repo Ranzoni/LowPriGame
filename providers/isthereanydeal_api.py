@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 from shared.models import GamePrice, PriceInfo
 from shared.functions import calculate_discount
-from shared.sales_provider import SalesProvider
+from providers.sales_provider import SalesProvider
 from infra.environment_variables import load_config
 
 

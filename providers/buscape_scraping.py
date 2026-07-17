@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from typing import override
 
-from shared.sales_scraping_provider import SalesScrapingProvider, PriceFound
+from providers.sales_scraping_provider import SalesScrapingProvider, PriceFound
 from infra.environment_variables import load_config
 
 
