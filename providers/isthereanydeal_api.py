@@ -21,22 +21,23 @@ class IsThereAnyDealProvider(SalesProvider):
             "timeout": "ISTHERANYDEAL_API_TIMEOUT"
         })
 
+        self.__key = config["key"]
+
         super().__init__(
             games=games,
             url=config["url"], 
             sentence_transformer=sentence_transformer,
-            key=config["key"],
             timeout=int(config["timeout"])
         )
 
-    def _post_api(self, path: str, payload, params = None):
+    def __post_api(self, path: str, payload, params = None):
         url = self.url + path
 
         response = requests.post(
             url,
             json=payload,
             headers={
-                "ITAD-API-Key": self.key
+                "ITAD-API-Key": self.__key
             },
             params=params,
             timeout=self.timeout,
@@ -46,8 +47,8 @@ class IsThereAnyDealProvider(SalesProvider):
 
         return response.json()
 
-    def _get_games_ids(self) -> dict[str, str]:
-        payload = self._post_api("/lookup/id/title/v1", self.games)
+    def __get_games_ids(self) -> dict[str, str]:
+        payload = self.__post_api("/lookup/id/title/v1", self.games)
         
         if not isinstance(payload, dict):
             raise ValueError("Resposta inesperada da API: esperado objeto com mapeamento nome->id.")
@@ -55,10 +56,10 @@ class IsThereAnyDealProvider(SalesProvider):
         return {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
 
     def get_sales_games(self) -> list[GamePrice]:
-        games_found = self._get_games_ids()
+        games_found = self.__get_games_ids()
         games_ids = [game_id for game_id in games_found.values() if isinstance(game_id, str)]
 
-        payload = self._post_api("/games/overview/v2", games_ids, { "country": "BR"})
+        payload = self.__post_api("/games/overview/v2", games_ids, { "country": "BR"})
         
         sales_response = ApiSaleResponse(**payload)
 

@@ -3,6 +3,7 @@ import psycopg
 from datetime import datetime, timezone
 
 from infra.environment_variables import load_config
+from shared.enums import PlatformType
 
 
 class Game:
@@ -19,9 +20,10 @@ class Game:
         return self.__name
 
 class Platform:
-    def __init__(self, id: int, name: str):
+    def __init__(self, id: int, name: str, type: PlatformType):
         self.__id = id
         self.__name = name
+        self.__type = type
 
     @property
     def id(self) -> int:
@@ -30,6 +32,10 @@ class Platform:
     @property
     def name(self) -> str:
         return self.__name
+    
+    @property
+    def type(self) -> PlatformType:
+        return self.__type
     
 class GamePriceHistory:
     def __init__(self, id: int, price: float, updated_at: datetime):
@@ -228,7 +234,7 @@ class Database:
         try:
             with psycopg.connect(self.connection_string) as conn:
                 with conn.cursor() as cur:
-                    query = "SELECT id, name FROM platforms;"
+                    query = "SELECT id, name, type FROM platforms;"
 
                     cur.execute(query)
                     rows = cur.fetchall()
@@ -236,7 +242,8 @@ class Database:
                     return [
                         Platform(
                             id=int(row[0]),
-                            name=row[1]
+                            name=row[1],
+                            type=PlatformType(int(row[2]))
                         )
                         for row in rows
                     ]

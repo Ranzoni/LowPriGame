@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
 
 from providers.kabum_scraping import KabumProvider
+from providers.psprices_search import PSPricesProvider
 from providers.sales_provider import SalesProvider
 from providers.sales_scraping_provider import SalesScrapingProvider
 from providers.isthereanydeal_api import IsThereAnyDealProvider
@@ -20,5 +21,6 @@ def get_providers(games: list[str]) -> list[SalesProvider]:
 
     return [
         IsThereAnyDealProvider(games, model),
+        PSPricesProvider(games, model),
         *get_scraping_providers(games, model)
     ]

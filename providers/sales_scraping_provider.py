@@ -18,12 +18,17 @@ class PriceFound(BaseModel):
 
 class SalesScrapingProvider(SalesProvider):
     def __init__(self, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
+        self.__search_path = search_path
+
         super().__init__(
             games=games,
             url=url,
-            sentence_transformer=sentence_transformer,
-            search_path=search_path
+            sentence_transformer=sentence_transformer
         )
+
+    @property
+    def search_path(self) -> str:
+        return self.__search_path
 
     def register_prices(self) -> None:
         db = Database()

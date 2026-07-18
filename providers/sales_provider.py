@@ -6,12 +6,10 @@ from infra.environment_variables import load_config
 
 
 class SalesProvider:
-    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, search_path: str = None, key: str = None, timeout: int = None):
-        self.games = games
+    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, timeout: int = None):
+        self.__games = games
         self.__url = url
         self.__sentence_transformer = sentence_transformer
-        self.search_path = search_path
-        self.__key = key
         self.__timeout = timeout
 
         config = load_config({
@@ -24,12 +22,12 @@ class SalesProvider:
         return []
     
     @property
+    def games(self) -> list[str]:
+        return self.__games
+
+    @property
     def url(self) -> str:
         return self.__url
-    
-    @property
-    def key(self) -> str:
-        return self.__key
     
     @property
     def timeout(self) -> int:
@@ -43,14 +41,17 @@ class SalesProvider:
         invalid_terms_found = [term_to_ignore for term_to_ignore in self.__terms_to_ignore if term_to_ignore.lower() in value.lower()]
         return bool(invalid_terms_found)
 
-    def is_game_looking_for(self, game_title: str, product_found_title: str) -> bool:
+    def is_game_looking_for(self, game_title: str, product_found_title: str, similary_limit: float = None) -> bool:
         game_title_embedding = self.__sentence_transformer.encode(game_title)
         product_title_embedding = self.__sentence_transformer.encode(product_found_title)
 
         similarity = cos_sim(game_title_embedding, product_title_embedding)
 
-        config = load_config({
-            "similarity": "GAME_SIMILARITY"
-        })
+        if not similary_limit:
+            config = load_config({
+                "similarity": "GAME_SIMILARITY"
+            })
 
-        return similarity >= float(config["similarity"])
+            similary_limit = float(config["similarity"])
+
+        return similarity >= similary_limit
