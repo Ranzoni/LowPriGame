@@ -1,8 +1,7 @@
-import requests
-
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
+from playwright.sync_api import Browser, sync_playwright
 
 from providers.sales_provider import SalesProvider
 from shared.models import GamePrice, PriceInfo
@@ -17,10 +16,11 @@ class PriceFound(BaseModel):
     link: str
 
 class SalesScrapingProvider(SalesProvider):
-    def __init__(self, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
+    def __init__(self, provider_name: str, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
         self.__search_path = search_path
 
         super().__init__(
+            provider_name=provider_name,
             games=games,
             url=url,
             sentence_transformer=sentence_transformer
@@ -31,69 +31,104 @@ class SalesScrapingProvider(SalesProvider):
         return self.__search_path
 
     def register_prices(self) -> None:
-        db = Database()
-        platforms = db.get_platforms()
-        
-        for platform in platforms:
-            for game_name in self.games:
-                game = db.get_game_by_name(game=game_name)
+        print("---------------------------------------------------")
+        print(self.provider_name)
+        print("")
 
-                game_search_term = self.__get_search_game_term(game=game, platform=platform)
-                html = self.__download_html(game_search=game_search_term)
+        try:
+            db = Database()
+            platforms = db.get_platforms()
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True
+                )
 
-                prices_found = self._scraping_prices(html)
+                for platform in platforms:
+                    for game_name in self.games:
+                        game = db.get_game_by_name(game=game_name)
 
-                products_match_game = [
-                    price
-                    for price in prices_found if self.__product_match_game(
-                        search_term=game_search_term,
-                        product_name=price.product_name,
-                        product_url=price.link
-                    )
-                ]
+                        game_search_term = self.__get_search_game_term(game=game, platform=platform)
+                        html = self._download_html(game_search=game_search_term, browser=browser)
 
-                data = [
-                    (game.id, platform.id, price_found.price)
-                    for price_found in products_match_game
-                ]
-                db.add_prices(data)
+                        prices_found = self._scraping_prices(html)
+
+                        products_match_game = [
+                            price
+                            for price in prices_found if self.__product_match_game(
+                                search_term=game_search_term,
+                                product_name=price.product_name,
+                                product_url=price.link
+                            )
+                        ]
+
+                        data = [
+                            (game.id, platform.id, price_found.price)
+                            for price_found in products_match_game
+                        ]
+                        db.add_prices(data)
+
+                browser.close()
+        except Exception as e:
+            print(f"Não foi possível registrar os preços: {e}")
 
     def get_sales_games(self) -> list[GamePrice]:
         prices = []
 
-        db = Database()
-        platforms = db.get_platforms()
-        
-        for platform in platforms:
-            for game_name in self.games:
-                game = db.get_game_by_name(game=game_name)
-                regular_price = self.__get_regular_price(game, platform)
-                game_search_term = self.__get_search_game_term(game=game, platform=platform)
+        print("---------------------------------------------------")
+        print(self.provider_name)
+        print("")
 
-                html = self.__download_html(game_search=game_search_term)
-                prices_found = self._scraping_prices(html)
+        try:
+            db = Database()
+            platforms = db.get_platforms()
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True
+                )
 
-                discount_found = None
-                for price_found in prices_found:
-                    product_match_game = self.__product_match_game(
-                        search_term=game_search_term,
-                        product_name=price_found.product_name,
-                        product_url=price_found.link
-                    )
+                for platform in platforms:
+                    for game_name in self.games:
+                        game = db.get_game_by_name(game=game_name)
+                        regular_price = self.__get_regular_price(game, platform)
 
-                    if not product_match_game:
-                        continue
+                        game_search_term = self.__get_search_game_term(game=game, platform=platform)
 
-                    if price_found.price < regular_price and (not discount_found or discount_found.price > price_found.price):
-                        discount_found = self.__handle_discount(
-                            game_name=game_name,
-                            platform=platform,
-                            regular_price=regular_price,
-                            price_found=price_found
-                        )
+                        html = self._download_html(game_search=game_search_term, browser=browser)
+                        prices_found = self._scraping_prices(html)
 
-                if discount_found:
-                    prices.append(discount_found)
+                        discount_found = None
+                        for price_found in prices_found:
+                            print(f"Jogo encontrado: {price_found.product_name}")
+                            print(f"Preço: {price_found.price}")
+                            print(f"Loja: {price_found.store}")
+                            print(f"Link: {price_found.link}")
+                            print("")
+
+                            product_match_game = self.__product_match_game(
+                                search_term=game_search_term,
+                                product_name=price_found.product_name,
+                                product_url=price_found.link
+                            )
+
+                            if not product_match_game:
+                                continue
+
+                            if price_found.price < regular_price and (not discount_found or discount_found.price > price_found.price):
+                                discount_found = self.__handle_discount(
+                                    game_name=game_name,
+                                    platform=platform,
+                                    regular_price=regular_price,
+                                    price_found=price_found
+                                )
+
+                        if discount_found:
+                            prices.append(discount_found)
+
+                browser.close()
+        except Exception as e:
+            print(f"Não foi possível buscar as promoções: {e}")
 
         return prices
 
@@ -103,23 +138,33 @@ class SalesScrapingProvider(SalesProvider):
     def __get_search_game_term(self, game: Game, platform: Platform) -> str:
         return f"{game.name} de {platform.name}"
 
-    def __download_html(self, game_search: str) -> BeautifulSoup:
+    def _download_html(self, game_search: str, browser: Browser) -> BeautifulSoup:
         url = f"{self.url}/{self.search_path}{game_search.replace(" ", "+")}+game"
 
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            locale="pt-BR",
+            timezone_id="America/Sao_Paulo",
+            user_agent=(
+                "Mozilla/5.0 (X11; Linux x86_64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/138.0.0.0 Safari/537.36"
             )
-        }
+        )
 
-        response = requests.get(url, headers=headers)
+        page = context.new_page()
 
-        if response.status_code != 200:
-            raise ValueError("Não foi possível baixar HTML do site.")
+        page.goto(
+            url,
+            wait_until="domcontentloaded",
+        )
 
-        return BeautifulSoup(response.text, "lxml")
+        html_content = page.content()
+
+        page.close()
+        context.close()
+
+        return BeautifulSoup(html_content, "html.parser")
 
     def __product_match_game(self, search_term: str, product_name: str, product_url: str) -> bool:
         if not self.is_game_looking_for(search_term, product_name):

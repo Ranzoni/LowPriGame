@@ -15,6 +15,7 @@ class BuscapeProvider(SalesScrapingProvider):
         })
 
         super().__init__(
+            provider_name="Buscapé",
             games=games,
             url=config["url"],
             search_path="search?q=",
@@ -30,14 +31,8 @@ class BuscapeProvider(SalesScrapingProvider):
         for product in products:
             product_name = product["name"]
             product_price = float(product["price"])
-            product_store = f"[Buscapé] {product["bestOffer"]["merchantName"]}"
+            product_store = f"[{self.provider_name}] {product["bestOffer"]["merchantName"]}"
             product_link = self.url + product["url"]
-
-            print(f"Jogo encontrado: {product_name}")
-            print(f"Preço: {product_price}")
-            print(f"Loja: {product_store}")
-            print(f"Link: {product_link}")
-            print("")
 
             prices_found.append(PriceFound(
                 price=product_price,

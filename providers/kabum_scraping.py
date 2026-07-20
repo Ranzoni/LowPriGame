@@ -15,6 +15,7 @@ class KabumProvider(SalesScrapingProvider):
         })
 
         super().__init__(
+            provider_name="Kabum!",
             games=games,
             url=config["url"],
             search_path="busca/",
@@ -32,12 +33,6 @@ class KabumProvider(SalesScrapingProvider):
             product_price = float(product["priceWithDiscount"])
             product_store = "Kabum!"
             product_link = f"{self.url}/produto/{product['code']}"
-
-            print(f"Jogo encontrado: {product_name}")
-            print(f"Preço: {product_price}")
-            print(f"Loja: {product_store}")
-            print(f"Link: {product_link}")
-            print("")
 
             prices_found.append(PriceFound(
                 price=product_price,

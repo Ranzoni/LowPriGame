@@ -6,7 +6,8 @@ from infra.environment_variables import load_config
 
 
 class SalesProvider:
-    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, timeout: int = None):
+    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, timeout: int = None, provider_name: str = None):
+        self.__provider_name = provider_name
         self.__games = games
         self.__url = url
         self.__sentence_transformer = sentence_transformer
@@ -19,8 +20,12 @@ class SalesProvider:
         self.__terms_to_ignore: list[str] = config["terms_to_ignore"].split(",")
 
     def get_sales_games(self) -> list[GamePrice]:
-        return []
+        raise NotImplementedError("A função não foi implementada.")
     
+    @property
+    def provider_name(self) -> str | None:
+        return self.__provider_name
+
     @property
     def games(self) -> list[str]:
         return self.__games
