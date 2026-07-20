@@ -36,7 +36,7 @@ def send_email(subject: str, content: str) -> bool:
                     smtp.send_message(msg)
                 return True
             except (OSError, smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected) as exc:
-                if attempt == config["retries"]:
+                if attempt == retries:
                     logger.exception(
                         "Falha de rede ao enviar e-mail após %s tentativas.",
                         retries,

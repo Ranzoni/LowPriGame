@@ -1,9 +1,13 @@
 import psycopg
+import logging
 
 from datetime import datetime, timezone
 
 from infra.environment_variables import load_config
 from shared.enums import PlatformType
+
+
+logger = logging.getLogger(__name__)
 
 
 class Game:
@@ -67,6 +71,7 @@ class Database:
 
     def add_games(self, games: list[str]) -> None:
         if not games:
+            logger.info("Nenhum jogo novo para cadastrar no banco.")
             return
         
         try:
@@ -78,11 +83,13 @@ class Database:
                                 "INSERT INTO games (name) VALUES (%s);",
                                 (game,)
                             )
-        except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.info("%s jogos cadastrados no banco.", len(games))
+        except Exception:
+            logger.exception("Falha ao cadastrar jogos no banco.")
 
     def delete_games(self, games_ids: list[int]) -> None:
         if not games_ids:
+            logger.info("Nenhum jogo para remover do banco.")
             return
 
         try:
@@ -94,10 +101,11 @@ class Database:
                             f"DELETE FROM games WHERE id IN ({placeholders});",
                             games_ids,
                         )
-        except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.info("%s jogos removidos do banco.", len(games_ids))
+        except Exception:
+            logger.exception("Falha ao remover jogos do banco.")
 
-    def get_game_by_name(self, game: str) -> Game:
+    def get_game_by_name(self, game: str) -> Game | None:
         try:
             with psycopg.connect(self.connection_string) as conn:
                 with conn.cursor() as cur:
@@ -111,9 +119,9 @@ class Database:
                         id=int(row[0]),
                         name=row[1]
                     )
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return []
+        except Exception:
+            logger.exception("Falha ao buscar jogo pelo nome '%s'.", game)
+            return None
 
     def get_games(self) -> list[Game]:
         try:
@@ -130,8 +138,8 @@ class Database:
                         for row in rows
                     ]
 
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        except Exception:
+            logger.exception("Falha ao listar jogos cadastrados.")
             return []
         
     def in_blacklist(self, url: str) -> bool:
@@ -145,11 +153,15 @@ class Database:
                     row = cur.fetchone()
 
                     return row[0] if row else False
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return []
+        except Exception:
+            logger.exception("Falha ao consultar blacklist para a URL '%s'.", url)
+            return False
 
     def add_prices(self, prices_list: list[tuple[int, int, float]]) -> None:
+        if not prices_list:
+            logger.info("Nenhum preco para registrar no historico.")
+            return
+
         for game_id, _, price in prices_list:
             if not game_id:
                 raise ValueError("O ID do jogo não foi informado para registro do preço")
@@ -171,8 +183,9 @@ class Database:
                     """
 
                     cur.executemany(query, data)
-        except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.info("%s precos adicionados ao historico.", len(prices_list))
+        except Exception:
+            logger.exception("Falha ao adicionar precos ao historico.")
 
     def get_last_game_history(self, game_id: int, platform_id: int) -> GamePriceHistory | None:
         try:
@@ -199,9 +212,13 @@ class Database:
                         updated_at=row[2]
                     )
 
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return []
+        except Exception:
+            logger.exception(
+                "Falha ao consultar o ultimo preco do jogo %s na plataforma %s.",
+                game_id,
+                platform_id,
+            )
+            return None
 
     def get_game_prices_history(self, game_id: int, platform_id: int) -> list[GamePriceHistory]:
         try:
@@ -226,8 +243,12 @@ class Database:
                         for row in rows
                     ]
 
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        except Exception:
+            logger.exception(
+                "Falha ao consultar historico de precos do jogo %s na plataforma %s.",
+                game_id,
+                platform_id,
+            )
             return []
 
     def get_platforms(self) -> list[Platform]:
@@ -248,6 +269,6 @@ class Database:
                         for row in rows
                     ]
 
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        except Exception:
+            logger.exception("Falha ao listar plataformas.")
             return []

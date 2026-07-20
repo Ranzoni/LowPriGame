@@ -24,6 +24,7 @@ class IsThereAnyDealProvider(SalesProvider):
         self.__key = config["key"]
 
         super().__init__(
+            provider_name="IsThereAnyDeal",
             games=games,
             url=config["url"], 
             sentence_transformer=sentence_transformer,
@@ -32,6 +33,7 @@ class IsThereAnyDealProvider(SalesProvider):
 
     def __post_api(self, path: str, payload, params = None):
         url = self.url + path
+        self.logger.info("[%s] Requisicao POST para %s.", self.provider_name, path)
 
         response = requests.post(
             url,
@@ -53,9 +55,12 @@ class IsThereAnyDealProvider(SalesProvider):
         if not isinstance(payload, dict):
             raise ValueError("Resposta inesperada da API: esperado objeto com mapeamento nome->id.")
 
-        return {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
+        games_ids = {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
+        self.logger.info("[%s] %s jogos mapeados para IDs na API.", self.provider_name, len(games_ids))
+        return games_ids
 
     def get_sales_games(self) -> list[GamePrice]:
+        self.logger.info("[%s] Iniciando busca de promocoes via API.", self.provider_name)
         games_found = self.__get_games_ids()
         games_ids = [game_id for game_id in games_found.values() if isinstance(game_id, str)]
 
@@ -98,6 +103,17 @@ class IsThereAnyDealProvider(SalesProvider):
             )
 
             sales.append(game_price)
+            self.logger.info(
+                "[%s] Resultado encontrado: jogo='%s' preco=%.2f loja='%s' plataformas=%s link='%s'.",
+                self.provider_name,
+                game_price.name,
+                game_price.price,
+                game_price.store,
+                ", ".join(game_price.platforms or []),
+                game_price.link,
+            )
+
+        self.logger.info("[%s] Busca via API finalizada com %s promocoes.", self.provider_name, len(sales))
 
         return sales
 

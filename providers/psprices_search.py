@@ -1,4 +1,5 @@
 import re
+import logging
 
 from typing import override
 from bs4 import BeautifulSoup
@@ -13,12 +14,15 @@ from shared.models import GamePrice, PriceInfo
 
 
 class PSPricesProvider(SalesProvider):
+    logger = logging.getLogger(__name__)
+
     def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
         config = load_config({
             "url": "PSDPRICES_URL"
         })
 
         super().__init__(
+            provider_name="PSPrices",
             games=games,
             url=config["url"],
             sentence_transformer=sentence_transformer
@@ -27,6 +31,7 @@ class PSPricesProvider(SalesProvider):
     @override
     def get_sales_games(self):
         prices = []
+        self.logger.info("[%s] Iniciando busca de promocoes.", self.provider_name)
         
         db = Database()
         platforms = db.get_platforms()
@@ -36,15 +41,29 @@ class PSPricesProvider(SalesProvider):
                 headless=True
             )
 
-            for platform in platforms:
-                for game in self.games:
-                    prices.extend(self.__get_game_prices(
-                        game=game,
-                        platform=platform,
-                        browser=browser
-                    ))
+            try:
+                for platform in platforms:
+                    self.logger.info("[%s] Iterando plataforma %s.", self.provider_name, platform.name)
 
-            browser.close()
+                    for game in self.games:
+                        try:
+                            self.logger.info("[%s] Buscando jogo '%s' na plataforma %s.", self.provider_name, game, platform.name)
+                            prices.extend(self.__get_game_prices(
+                                game=game,
+                                platform=platform,
+                                browser=browser
+                            ))
+                        except Exception:
+                            self.logger.exception(
+                                "[%s] Falha ao buscar o jogo '%s' na plataforma %s.",
+                                self.provider_name,
+                                game,
+                                platform.name,
+                            )
+            finally:
+                browser.close()
+
+        self.logger.info("[%s] Busca finalizada com %s promocoes.", self.provider_name, len(prices))
 
         return prices
 
@@ -81,6 +100,16 @@ class PSPricesProvider(SalesProvider):
             )
 
             prices.append(game_price)
+            self.logger.info(
+                "[%s] Resultado encontrado: plataforma=%s jogo='%s' produto='%s' preco=%.2f preco_antigo=%.2f link='%s'.",
+                self.provider_name,
+                platform.name,
+                game,
+                product_name,
+                product_price,
+                product_regular_price,
+                product["url"],
+            )
 
         return prices
 

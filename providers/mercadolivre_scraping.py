@@ -61,8 +61,8 @@ class MercadoLivreProvider(SalesScrapingProvider):
         for product in products:
             product_name = product["name"]
             product_price = float(product["price"])
-            product_store = f"[{self.provider_name}] {product["bestOffer"]["merchantName"]}"
-            product_link = self.url + product["url"]
+            product_store = f"[{self.provider_name}] {product['store']}"
+            product_link = product["link"]
 
             prices_found.append(PriceFound(
                 price=product_price,
@@ -76,6 +76,8 @@ class MercadoLivreProvider(SalesScrapingProvider):
     def __extract_products(self, html: BeautifulSoup):
         products = html.find_all('li', class_='ui-search-layout__item')
 
+        results = []
+
         for product in products:
             title_tag = product.find('a', class_='poly-component__title')
             if not title_tag:
@@ -84,19 +86,25 @@ class MercadoLivreProvider(SalesScrapingProvider):
             name = title_tag.text.strip()
             link = title_tag['href']
                 
-            preco_atual_container = product.find('div', class_='poly-price__current')
-            if preco_atual_container:
-                fraction = preco_atual_container.find('span', class_='andes-money-amount__fraction')
-                cents = preco_atual_container.find('span', class_='andes-money-amount__cents')
-                
-                texto_fraction = fraction.text.strip() if fraction else "0"
-                texto_cents = cents.text.strip() if cents else "00"
-                price = f"R$ {texto_fraction},{texto_cents}"
-            else:
-                price = "Não encontrado"
+            seller_tag = product.find('span', class_='poly-component__seller')
+            seller = seller_tag.text.strip() if seller_tag else self.provider_name
 
-            return {
+            preco_atual_container = product.find('div', class_='poly-price__current')
+            if not preco_atual_container:
+                continue
+
+            fraction = preco_atual_container.find('span', class_='andes-money-amount__fraction')
+            cents = preco_atual_container.find('span', class_='andes-money-amount__cents')
+
+            texto_fraction = fraction.text.strip().replace('.', '') if fraction else "0"
+            texto_cents = cents.text.strip() if cents else "00"
+            price = float(f"{texto_fraction}.{texto_cents}")
+
+            results.append({
                 "name": name,
                 "price": price,
-                "link": link
-            }
+                "link": link,
+                "store": seller,
+            })
+
+        return results

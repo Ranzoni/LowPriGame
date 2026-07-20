@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 from dotenv import load_dotenv
 
@@ -10,22 +11,54 @@ from infra.email_sender import send_email
 
 load_dotenv()
 
+
+def _configure_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+
+logger = logging.getLogger(__name__)
+
 def _register_prices(games: list[str]) -> None:
+    logger.info("Iniciando atualização do histórico de preços para %s jogos.", len(games))
     providers = get_scraping_providers(games)
+
     for provider in providers:
-        provider.register_prices()
+        logger.info("Atualizando histórico com o provedor %s.", provider.provider_name)
+
+        try:
+            provider.register_prices()
+        except Exception:
+            logger.exception(
+                "Falha ao atualizar histórico de preços com o provedor %s.",
+                provider.provider_name,
+            )
 
 def _search_sales(games: list[str]) -> None:
     games_price = []
 
+    logger.info("Iniciando busca de promoções para %s jogos.", len(games))
     providers = get_providers(games)
 
     for provider in providers:
-        games_price.extend(provider.get_sales_games())
+        provider_name = provider.provider_name or provider.__class__.__name__
+        logger.info("Consultando promoções com o provedor %s.", provider_name)
+
+        try:
+            games_price.extend(provider.get_sales_games())
+        except Exception:
+            logger.exception(
+                "Falha ao consultar promoções com o provedor %s.",
+                provider_name,
+            )
 
     if not games_price:
+        logger.info("Nenhuma promoção encontrada.")
         return
 
+    logger.info("Foram encontradas %s promoções. Montando e-mail.", len(games_price))
     email_body = build_sales_email_body(games_price)
 
     success = send_email("Promoções encontradas!", email_body)
@@ -42,7 +75,11 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    _configure_logging()
+    logger.info("Aplicação iniciada com a ação %s.", args.action)
+
     games = get_games_list()
+    logger.info("Lista de jogos carregada com %s itens.", len(games))
     register_games(games)
 
     match args.action:

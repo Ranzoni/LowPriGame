@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+import logging
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
 from playwright.sync_api import Browser, sync_playwright
@@ -16,6 +17,8 @@ class PriceFound(BaseModel):
     link: str
 
 class SalesScrapingProvider(SalesProvider):
+    logger = logging.getLogger(__name__)
+
     def __init__(self, provider_name: str, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
         self.__search_path = search_path
 
@@ -31,104 +34,79 @@ class SalesScrapingProvider(SalesProvider):
         return self.__search_path
 
     def register_prices(self) -> None:
-        print("---------------------------------------------------")
-        print(self.provider_name)
-        print("")
+        self.logger.info("[%s] Iniciando registro de historico de precos.", self.provider_name)
 
-        try:
-            db = Database()
-            platforms = db.get_platforms()
-            
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True
-                )
+        db = Database()
+        platforms = db.get_platforms()
 
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True
+            )
+
+            try:
                 for platform in platforms:
+                    self.logger.info("[%s] Iterando plataforma %s para registro.", self.provider_name, platform.name)
+
                     for game_name in self.games:
-                        game = db.get_game_by_name(game=game_name)
-
-                        game_search_term = self.__get_search_game_term(game=game, platform=platform)
-                        html = self._download_html(game_search=game_search_term, browser=browser)
-
-                        prices_found = self._scraping_prices(html)
-
-                        products_match_game = [
-                            price
-                            for price in prices_found if self.__product_match_game(
-                                search_term=game_search_term,
-                                product_name=price.product_name,
-                                product_url=price.link
+                        try:
+                            self.__register_game_prices(
+                                db=db,
+                                game_name=game_name,
+                                platform=platform,
+                                browser=browser,
                             )
-                        ]
-
-                        data = [
-                            (game.id, platform.id, price_found.price)
-                            for price_found in products_match_game
-                        ]
-                        db.add_prices(data)
-
+                        except Exception:
+                            self.logger.exception(
+                                "[%s] Falha ao registrar historico do jogo '%s' na plataforma %s.",
+                                self.provider_name,
+                                game_name,
+                                platform.name,
+                            )
+            finally:
                 browser.close()
-        except Exception as e:
-            print(f"Não foi possível registrar os preços: {e}")
+
+        self.logger.info("[%s] Registro de historico finalizado.", self.provider_name)
 
     def get_sales_games(self) -> list[GamePrice]:
         prices = []
 
-        print("---------------------------------------------------")
-        print(self.provider_name)
-        print("")
+        self.logger.info("[%s] Iniciando busca de promocoes.", self.provider_name)
 
-        try:
-            db = Database()
-            platforms = db.get_platforms()
-            
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True
-                )
+        db = Database()
+        platforms = db.get_platforms()
 
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True
+            )
+
+            try:
                 for platform in platforms:
+                    self.logger.info("[%s] Iterando plataforma %s na busca de promocoes.", self.provider_name, platform.name)
+
                     for game_name in self.games:
-                        game = db.get_game_by_name(game=game_name)
-                        regular_price = self.__get_regular_price(game, platform)
-
-                        game_search_term = self.__get_search_game_term(game=game, platform=platform)
-
-                        html = self._download_html(game_search=game_search_term, browser=browser)
-                        prices_found = self._scraping_prices(html)
-
-                        discount_found = None
-                        for price_found in prices_found:
-                            print(f"Jogo encontrado: {price_found.product_name}")
-                            print(f"Preço: {price_found.price}")
-                            print(f"Loja: {price_found.store}")
-                            print(f"Link: {price_found.link}")
-                            print("")
-
-                            product_match_game = self.__product_match_game(
-                                search_term=game_search_term,
-                                product_name=price_found.product_name,
-                                product_url=price_found.link
+                        try:
+                            discount_found = self.__search_discount_for_game(
+                                db=db,
+                                game_name=game_name,
+                                platform=platform,
+                                browser=browser,
                             )
 
-                            if not product_match_game:
-                                continue
-
-                            if price_found.price < regular_price and (not discount_found or discount_found.price > price_found.price):
-                                discount_found = self.__handle_discount(
-                                    game_name=game_name,
-                                    platform=platform,
-                                    regular_price=regular_price,
-                                    price_found=price_found
-                                )
-
-                        if discount_found:
-                            prices.append(discount_found)
-
+                            if discount_found:
+                                prices.append(discount_found)
+                        except Exception:
+                            self.logger.exception(
+                                "[%s] Falha ao buscar promocao do jogo '%s' na plataforma %s.",
+                                self.provider_name,
+                                game_name,
+                                platform.name,
+                            )
+            finally:
                 browser.close()
-        except Exception as e:
-            print(f"Não foi possível buscar as promoções: {e}")
+
+        self.logger.info("[%s] Busca de promocoes finalizada com %s promocoes.", self.provider_name, len(prices))
 
         return prices
 
@@ -140,6 +118,7 @@ class SalesScrapingProvider(SalesProvider):
 
     def _download_html(self, game_search: str, browser: Browser) -> BeautifulSoup:
         url = f"{self.url}/{self.search_path}{game_search.replace(" ", "+")}+game"
+        self.logger.info("[%s] Baixando HTML para a busca '%s'.", self.provider_name, game_search)
 
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -165,6 +144,153 @@ class SalesScrapingProvider(SalesProvider):
         context.close()
 
         return BeautifulSoup(html_content, "html.parser")
+
+    def __register_game_prices(self, db: Database, game_name: str, platform: Platform, browser: Browser) -> None:
+        game = db.get_game_by_name(game=game_name)
+
+        if not game:
+            self.logger.warning(
+                "[%s] Jogo '%s' nao encontrado no banco para registro de historico.",
+                self.provider_name,
+                game_name,
+            )
+            return
+
+        game_search_term = self.__get_search_game_term(game=game, platform=platform)
+        self.logger.info(
+            "[%s] Registrando historico para plataforma=%s jogo='%s' busca='%s'.",
+            self.provider_name,
+            platform.name,
+            game_name,
+            game_search_term,
+        )
+
+        html = self._download_html(game_search=game_search_term, browser=browser)
+        prices_found = self._scraping_prices(html)
+        self.logger.info(
+            "[%s] %s resultados brutos encontrados para plataforma=%s jogo='%s'.",
+            self.provider_name,
+            len(prices_found),
+            platform.name,
+            game_name,
+        )
+
+        products_match_game = []
+        for price_found in prices_found:
+            self.__log_price_found(platform.name, game_name, price_found)
+
+            if self.__product_match_game(
+                search_term=game_search_term,
+                product_name=price_found.product_name,
+                product_url=price_found.link
+            ):
+                products_match_game.append(price_found)
+
+        data = [
+            (game.id, platform.id, price_found.price)
+            for price_found in products_match_game
+        ]
+        db.add_prices(data)
+        self.logger.info(
+            "[%s] %s resultados validos registrados para plataforma=%s jogo='%s'.",
+            self.provider_name,
+            len(products_match_game),
+            platform.name,
+            game_name,
+        )
+
+    def __search_discount_for_game(self, db: Database, game_name: str, platform: Platform, browser: Browser) -> GamePrice | None:
+        game = db.get_game_by_name(game=game_name)
+
+        if not game:
+            self.logger.warning(
+                "[%s] Jogo '%s' nao encontrado no banco durante a busca de promocoes.",
+                self.provider_name,
+                game_name,
+            )
+            return None
+
+        regular_price = self.__get_regular_price(game, platform)
+        if regular_price <= 0:
+            self.logger.warning(
+                "[%s] Historico insuficiente para comparar promocao do jogo '%s' na plataforma %s.",
+                self.provider_name,
+                game_name,
+                platform.name,
+            )
+            return None
+
+        game_search_term = self.__get_search_game_term(game=game, platform=platform)
+        self.logger.info(
+            "[%s] Buscando promocao para plataforma=%s jogo='%s' busca='%s' preco_base=%.2f.",
+            self.provider_name,
+            platform.name,
+            game_name,
+            game_search_term,
+            regular_price,
+        )
+
+        html = self._download_html(game_search=game_search_term, browser=browser)
+        prices_found = self._scraping_prices(html)
+        self.logger.info(
+            "[%s] %s resultados brutos encontrados para plataforma=%s jogo='%s'.",
+            self.provider_name,
+            len(prices_found),
+            platform.name,
+            game_name,
+        )
+
+        discount_found = None
+        for price_found in prices_found:
+            self.__log_price_found(platform.name, game_name, price_found)
+
+            product_match_game = self.__product_match_game(
+                search_term=game_search_term,
+                product_name=price_found.product_name,
+                product_url=price_found.link
+            )
+
+            if not product_match_game:
+                continue
+
+            if price_found.price < regular_price and (not discount_found or discount_found.price > price_found.price):
+                discount_found = self.__handle_discount(
+                    game_name=game_name,
+                    platform=platform,
+                    regular_price=regular_price,
+                    price_found=price_found
+                )
+
+        if discount_found:
+            self.logger.info(
+                "[%s] Promocao encontrada para plataforma=%s jogo='%s': preco=%.2f loja='%s'.",
+                self.provider_name,
+                platform.name,
+                game_name,
+                discount_found.price,
+                discount_found.store,
+            )
+        else:
+            self.logger.info(
+                "[%s] Nenhuma promocao valida para plataforma=%s jogo='%s'.",
+                self.provider_name,
+                platform.name,
+                game_name,
+            )
+
+        return discount_found
+
+    def __log_price_found(self, platform_name: str, game_name: str, price_found: PriceFound) -> None:
+        self.logger.info(
+            "[%s] Resultado encontrado: plataforma=%s jogo='%s' produto='%s' preco=%.2f loja='%s' link='%s'.",
+            self.provider_name,
+            platform_name,
+            game_name,
+            price_found.product_name,
+            price_found.price,
+            price_found.store,
+            price_found.link,
+        )
 
     def __product_match_game(self, search_term: str, product_name: str, product_url: str) -> bool:
         if not self.is_game_looking_for(search_term, product_name):
