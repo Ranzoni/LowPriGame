@@ -1,5 +1,6 @@
 import re
 import logging
+import unicodedata
 
 from typing import override
 from bs4 import BeautifulSoup
@@ -79,6 +80,15 @@ class PSPricesProvider(SalesProvider):
         for product in products:
             product_name = product["name"]
 
+            if not self.__contains_game_name(game, product_name):
+                self.logger.info(
+                    "[%s] Produto ignorado por nao conter o nome do jogo: jogo='%s' produto='%s'.",
+                    self.provider_name,
+                    game,
+                    product_name,
+                )
+                continue
+
             if not self.is_game_looking_for(game, product_name, 0.89):
                 continue
 
@@ -87,7 +97,7 @@ class PSPricesProvider(SalesProvider):
             discount = product_regular_price - product_price
 
             game_price = GamePrice(
-                name=product_name,
+                name=game,
                 price=product_price,
                 price_info=PriceInfo(
                     regular_price=product_regular_price,
@@ -112,6 +122,23 @@ class PSPricesProvider(SalesProvider):
             )
 
         return prices
+
+    def __normalize_text(self, value: str) -> str:
+        normalized = unicodedata.normalize("NFD", value)
+        normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+        normalized = normalized.lower()
+        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        return normalized
+
+    def __contains_game_name(self, game_name: str, product_name: str) -> bool:
+        normalized_game_name = self.__normalize_text(game_name)
+        normalized_product_name = self.__normalize_text(product_name)
+
+        if not normalized_game_name or not normalized_product_name:
+            return False
+
+        return normalized_game_name in normalized_product_name
 
     def __get_platform_store(self, platform_type: PlatformType) -> str:
         match platform_type:

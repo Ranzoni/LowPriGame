@@ -1,5 +1,6 @@
 import logging
 import requests
+import unicodedata
 
 from pydantic import BaseModel
 from typing import Optional
@@ -31,6 +32,11 @@ class IsThereAnyDealProvider(SalesProvider):
             timeout=int(config["timeout"])
         )
 
+    def __normalize_title(self, value: str) -> str:
+        normalized = unicodedata.normalize("NFD", value)
+        normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+        return normalized.strip().lower()
+
     def __post_api(self, path: str, payload, params = None):
         url = self.url + path
         self.logger.info("[%s] Requisicao POST para %s.", self.provider_name, path)
@@ -55,7 +61,30 @@ class IsThereAnyDealProvider(SalesProvider):
         if not isinstance(payload, dict):
             raise ValueError("Resposta inesperada da API: esperado objeto com mapeamento nome->id.")
 
-        games_ids = {name: game_id for name, game_id in payload.items() if isinstance(game_id, str)}
+        games_ids: dict[str, str] = {}
+        for game_name in self.games:
+            game_id = payload.get(game_name)
+
+            if not isinstance(game_id, str):
+                fallback_key = next(
+                    (
+                        name
+                        for name in payload.keys()
+                        if isinstance(name, str) and self.__normalize_title(name) == self.__normalize_title(game_name)
+                    ),
+                    None,
+                )
+                game_id = payload.get(fallback_key) if fallback_key else None
+
+            if isinstance(game_id, str):
+                games_ids[game_name] = game_id
+            else:
+                self.logger.warning(
+                    "[%s] Jogo '%s' nao foi mapeado para ID na API.",
+                    self.provider_name,
+                    game_name,
+                )
+
         self.logger.info("[%s] %s jogos mapeados para IDs na API.", self.provider_name, len(games_ids))
         return games_ids
 
@@ -63,6 +92,7 @@ class IsThereAnyDealProvider(SalesProvider):
         self.logger.info("[%s] Iniciando busca de promocoes via API.", self.provider_name)
         games_found = self.__get_games_ids()
         games_ids = [game_id for game_id in games_found.values() if isinstance(game_id, str)]
+        game_name_by_id = {game_id: game_name for game_name, game_id in games_found.items()}
 
         payload = self.__post_api("/games/overview/v2", games_ids, { "country": "BR"})
         
@@ -74,12 +104,14 @@ class IsThereAnyDealProvider(SalesProvider):
         sales: list[GamePrice] = []
         
         for sale in sales_response.prices:
-            title: str = sale.id
-            
-            for key, value in games_found.items():
-                if value == sale.id:
-                    title = key
-                    break
+            title = game_name_by_id.get(sale.id)
+            if not title:
+                self.logger.warning(
+                    "[%s] Resultado com id '%s' ignorado por nao mapear para jogo em self.games.",
+                    self.provider_name,
+                    sale.id,
+                )
+                continue
 
             platforms = [drm.name for drm in sale.current.drm if drm.name]
 
