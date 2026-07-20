@@ -43,7 +43,7 @@ class MercadoLivreProvider(SalesScrapingProvider):
             wait_until="domcontentloaded",
         )
 
-        page.wait_for_selector('li.ui-search-layout__item', timeout=60000)
+        page.wait_for_selector('li.ui-search-layout__item', timeout=15000)
 
         html_content = page.content()
 

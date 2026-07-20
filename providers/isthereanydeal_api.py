@@ -87,6 +87,8 @@ class IsThereAnyDealProvider(SalesProvider):
                 regular_price=sale.current.regular.amount,
                 price_to_compare=sale.current.price.amount
             )
+            if not discount:
+                continue
 
             game_price = GamePrice(
                 name=title,
