@@ -3,14 +3,16 @@ name: Search sales
 on:
   schedule:
     - cron: "0 15 * * 2,5"
-
+  workflow_dispatch:
+   
 jobs:
   executar:
 
     runs-on: ubuntu-latest
+    environment: LPG_Environment
     
     env:
-      CONNECTION_STRING: ${{ secrets.CONECTION_STRING }}
+      CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
       
       EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
       EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -20,7 +22,7 @@ jobs:
       EMAIL_DESTINATION: ${{ secrets.EMAIL_DESTINATION }}
       
       ISTHERANYDEAL_API_URL: https://api.isthereanydeal.com
-      ISTHERANYDEAL_API_KEY: ${{ secrets.EMAIL_DESTINATION }}
+      ISTHERANYDEAL_API_KEY: ${{ secrets.ISTHERANYDEAL_API_KEY }}
       ISTHERANYDEAL_API_TIMEOUT: 20
       
       BUSCAPE_URL: https://www.buscape.com.br
@@ -45,6 +47,9 @@ jobs:
         
     - name: Instalar os pacotes
       run: pip install -r requirements.txt
+      
+    - name: Instalar navegadores do Playwright
+      run: playwright install chromium
       
     - name: Iniciar a busca por descontos
       run: python main.py search-sales
