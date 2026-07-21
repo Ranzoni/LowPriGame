@@ -3,6 +3,7 @@ name: Update prices history
 on:
   schedule:
     - cron: "15 14 * * 2"
+  workflow_dispatch:
    
 jobs:
   executar:
