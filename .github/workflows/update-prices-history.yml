@@ -47,5 +47,5 @@ jobs:
       run: pip install -r requirements.txt
       
     - name: Iniciar o registro de preços
-      if: env.CONNECTION_STRING != ''
+      if: env.CONNECTION_STRING
       run: python main.py update-prices-history
