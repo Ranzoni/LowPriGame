@@ -48,5 +48,8 @@ jobs:
     - name: Instalar os pacotes
       run: pip install -r requirements.txt
       
+    - name: Instalar navegadores do Playwright
+      run: playwright install chromium
+      
     - name: Iniciar o registro de preços
       run: python main.py update-prices-history
