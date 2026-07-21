@@ -1,6 +1,5 @@
 import logging
 import requests
-import unicodedata
 
 from pydantic import BaseModel
 from typing import Optional
@@ -9,6 +8,7 @@ from sentence_transformers import SentenceTransformer
 from shared.models import GamePrice, PriceInfo
 from shared.functions import calculate_discount
 from providers.sales_provider import SalesProvider
+from infra.database import Database
 from infra.environment_variables import load_config
 
 
@@ -33,9 +33,7 @@ class IsThereAnyDealProvider(SalesProvider):
         )
 
     def __normalize_title(self, value: str) -> str:
-        normalized = unicodedata.normalize("NFD", value)
-        normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
-        return normalized.strip().lower()
+        return self._normalize_text_for_match(value)
 
     def __post_api(self, path: str, payload, params = None):
         url = self.url + path
@@ -90,9 +88,16 @@ class IsThereAnyDealProvider(SalesProvider):
 
     def get_sales_games(self) -> list[GamePrice]:
         self.logger.info("[%s] Iniciando busca de promocoes via API.", self.provider_name)
+        db = Database()
         games_found = self.__get_games_ids()
         games_ids = [game_id for game_id in games_found.values() if isinstance(game_id, str)]
         game_name_by_id = {game_id: game_name for game_name, game_id in games_found.items()}
+
+        game_id_by_name: dict[str, int] = {}
+        for game_name in games_found.keys():
+            game = db.get_game_by_name(game=game_name)
+            if game:
+                game_id_by_name[game_name] = game.id
 
         payload = self.__post_api("/games/overview/v2", games_ids, { "country": "BR"})
         
@@ -112,6 +117,19 @@ class IsThereAnyDealProvider(SalesProvider):
                     sale.id,
                 )
                 continue
+
+            product_title = sale.title or title
+            game_id = game_id_by_name.get(title)
+            if game_id:
+                terms_to_ignore = self.get_terms_to_ignore_for_game(game_id=game_id, db=db)
+                if self.has_terms_to_ignore(value=product_title, terms_to_ignore=terms_to_ignore):
+                    self.logger.info(
+                        "[%s] Resultado ignorado por termo proibido: jogo='%s' produto='%s'.",
+                        self.provider_name,
+                        title,
+                        product_title,
+                    )
+                    continue
 
             platforms = [drm.name for drm in sale.current.drm if drm.name]
 
@@ -177,6 +195,7 @@ class ApiCurrentResponse(BaseModel):
 
 class ApiPricesResponse(BaseModel):
     id: str
+    title: Optional[str] = None
     current: ApiCurrentResponse
 
 class ApiSaleResponse(BaseModel):

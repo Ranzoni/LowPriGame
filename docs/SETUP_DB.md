@@ -6,6 +6,7 @@ Objetivo do modelo:
 - Manter cadastro de jogos e plataformas.
 - Registrar historico de preco por jogo e plataforma.
 - Permitir blacklist de links.
+- Permitir termos proibidos por jogo para ignorar resultados de scraping/API.
 - Remover historico automaticamente quando um jogo ou plataforma for excluido (`ON DELETE CASCADE`).
 
 ## Script SQL
@@ -28,6 +29,20 @@ CREATE TABLE IF NOT EXISTS blacklist (
     id BIGSERIAL PRIMARY KEY,
     url TEXT NOT NULL UNIQUE
 );
+
+CREATE TABLE IF NOT EXISTS terms_to_ignore (
+    id BIGSERIAL PRIMARY KEY,
+    games_id BIGINT NOT NULL,
+    terms TEXT NOT NULL,
+
+    CONSTRAINT fk_terms_to_ignore_game
+        FOREIGN KEY (games_id)
+        REFERENCES games (id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_terms_to_ignore_games_id
+    ON terms_to_ignore (games_id);
 
 CREATE TABLE IF NOT EXISTS game_price_history (
     id BIGSERIAL PRIMARY KEY,
@@ -68,5 +83,6 @@ COMMIT;
 ## Observacoes
 
 - O projeto usa as colunas `games_id` e `platforms_id` em `game_price_history`.
+- Em `terms_to_ignore`, os termos podem ser armazenados separados por virgula no campo `terms`.
 - Ao excluir um registro em `games` ou `platforms`, os registros relacionados em `game_price_history` serao removidos automaticamente por cascade.
 - Se voce quiser apagar toda a base em ambiente de teste, use `TRUNCATE ... CASCADE` com cuidado.

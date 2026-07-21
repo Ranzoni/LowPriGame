@@ -272,3 +272,27 @@ class Database:
         except Exception:
             logger.exception("Falha ao listar plataformas.")
             return []
+
+    def get_terms_to_ignore_by_game_id(self, game_id: int) -> list[str]:
+        try:
+            with psycopg.connect(self.connection_string) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT terms FROM terms_to_ignore WHERE games_id = %s;",
+                        (game_id,)
+                    )
+                    rows = cur.fetchall()
+
+                    terms_to_ignore: list[str] = []
+                    for row in rows:
+                        terms = row[0] if row and row[0] else ""
+                        terms_to_ignore.extend([
+                            term.strip()
+                            for term in terms.split(",")
+                            if term and term.strip()
+                        ])
+
+                    return terms_to_ignore
+        except Exception:
+            logger.exception("Falha ao listar termos para ignorar do jogo %s.", game_id)
+            return []

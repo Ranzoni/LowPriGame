@@ -167,6 +167,7 @@ class SalesScrapingProvider(SalesProvider):
 
         html = self._download_html(game_search=game_search_term, browser=browser)
         prices_found = self._scraping_prices(html)
+        terms_to_ignore = self.get_terms_to_ignore_for_game(game_id=game.id, db=db)
         self.logger.info(
             "[%s] %s resultados brutos encontrados para plataforma=%s jogo='%s'.",
             self.provider_name,
@@ -182,7 +183,9 @@ class SalesScrapingProvider(SalesProvider):
             if self.__product_match_game(
                 search_term=game_search_term,
                 product_name=price_found.product_name,
-                product_url=price_found.link
+                product_url=price_found.link,
+                terms_to_ignore=terms_to_ignore,
+                db=db,
             ):
                 products_match_game.append(price_found)
 
@@ -232,6 +235,7 @@ class SalesScrapingProvider(SalesProvider):
 
         html = self._download_html(game_search=game_search_term, browser=browser)
         prices_found = self._scraping_prices(html)
+        terms_to_ignore = self.get_terms_to_ignore_for_game(game_id=game.id, db=db)
         self.logger.info(
             "[%s] %s resultados brutos encontrados para plataforma=%s jogo='%s'.",
             self.provider_name,
@@ -247,7 +251,9 @@ class SalesScrapingProvider(SalesProvider):
             product_match_game = self.__product_match_game(
                 search_term=game_search_term,
                 product_name=price_found.product_name,
-                product_url=price_found.link
+                product_url=price_found.link,
+                terms_to_ignore=terms_to_ignore,
+                db=db,
             )
 
             if not product_match_game:
@@ -292,14 +298,13 @@ class SalesScrapingProvider(SalesProvider):
             price_found.link,
         )
 
-    def __product_match_game(self, search_term: str, product_name: str, product_url: str) -> bool:
+    def __product_match_game(self, search_term: str, product_name: str, product_url: str, terms_to_ignore: list[str], db: Database) -> bool:
         if not self.is_game_looking_for(search_term, product_name):
             return False
             
-        if self.has_terms_to_ignore(value=product_name):
+        if self.has_terms_to_ignore(value=product_name, terms_to_ignore=terms_to_ignore):
             return False
 
-        db = Database()
         if db.in_blacklist(product_url):
             return False
 

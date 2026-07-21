@@ -1,6 +1,5 @@
-import re
 import logging
-import unicodedata
+import re
 
 from typing import override
 from bs4 import BeautifulSoup
@@ -52,7 +51,8 @@ class PSPricesProvider(SalesProvider):
                             prices.extend(self.__get_game_prices(
                                 game=game,
                                 platform=platform,
-                                browser=browser
+                                browser=browser,
+                                db = db
                             ))
                         except Exception:
                             self.logger.exception(
@@ -68,7 +68,7 @@ class PSPricesProvider(SalesProvider):
 
         return prices
 
-    def __get_game_prices(self, game: str, platform: Platform, browser: Browser) -> list[GamePrice]:
+    def __get_game_prices(self, game: str, platform: Platform, browser: Browser, db: Database) -> list[GamePrice]:
         prices = []
 
         products = self.__extract_products(
@@ -77,12 +77,26 @@ class PSPricesProvider(SalesProvider):
             browser=browser
         )
 
+        game_in_db = db.get_game_by_name(game=game)
+        terms_to_ignore: list[str] = []
+        if game_in_db:
+            terms_to_ignore = self.get_terms_to_ignore_for_game(game_id=game_in_db.id, db=db)
+
         for product in products:
             product_name = product["name"]
 
             if not self.__contains_game_name(game, product_name):
                 self.logger.info(
                     "[%s] Produto ignorado por nao conter o nome do jogo: jogo='%s' produto='%s'.",
+                    self.provider_name,
+                    game,
+                    product_name,
+                )
+                continue
+
+            if self.has_terms_to_ignore(value=product_name, terms_to_ignore=terms_to_ignore):
+                self.logger.info(
+                    "[%s] Produto ignorado por termo proibido: jogo='%s' produto='%s'.",
                     self.provider_name,
                     game,
                     product_name,
@@ -124,12 +138,7 @@ class PSPricesProvider(SalesProvider):
         return prices
 
     def __normalize_text(self, value: str) -> str:
-        normalized = unicodedata.normalize("NFD", value)
-        normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
-        normalized = normalized.lower()
-        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
-        normalized = re.sub(r"\s+", " ", normalized).strip()
-        return normalized
+        return self._normalize_text_for_match(value)
 
     def __contains_game_name(self, game_name: str, product_name: str) -> bool:
         normalized_game_name = self.__normalize_text(game_name)

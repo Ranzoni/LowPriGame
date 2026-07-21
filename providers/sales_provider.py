@@ -1,6 +1,10 @@
+import re
+import unicodedata
+
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 
+from infra.database import Database
 from shared.models import GamePrice
 from infra.environment_variables import load_config
 
@@ -12,12 +16,7 @@ class SalesProvider:
         self.__url = url
         self.__sentence_transformer = sentence_transformer
         self.__timeout = timeout
-
-        config = load_config({
-            "terms_to_ignore": "TERMS_TO_IGNORE"
-        })
-
-        self.__terms_to_ignore: list[str] = config["terms_to_ignore"].split(",")
+        self.__terms_to_ignore_by_game_id: dict[int, list[str]] = {}
 
     def get_sales_games(self) -> list[GamePrice]:
         raise NotImplementedError("A função não foi implementada.")
@@ -42,8 +41,28 @@ class SalesProvider:
     def sentence_transformer(self) -> SentenceTransformer:
         return self.__sentence_transformer
     
-    def has_terms_to_ignore(self, value: str) -> bool: 
-        invalid_terms_found = [term_to_ignore for term_to_ignore in self.__terms_to_ignore if term_to_ignore.lower() in value.lower()]
+    def _normalize_text_for_match(self, value: str) -> str:
+        normalized = unicodedata.normalize("NFD", value or "")
+        normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+        normalized = normalized.lower()
+        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        return normalized
+
+    def get_terms_to_ignore_for_game(self, game_id: int, db: Database) -> list[str]:
+        if game_id not in self.__terms_to_ignore_by_game_id:
+            self.__terms_to_ignore_by_game_id[game_id] = db.get_terms_to_ignore_by_game_id(game_id=game_id)
+
+        return self.__terms_to_ignore_by_game_id[game_id]
+
+    def has_terms_to_ignore(self, value: str, terms_to_ignore: list[str]) -> bool:
+        normalized_value = self._normalize_text_for_match(value)
+
+        invalid_terms_found = [
+            term_to_ignore
+            for term_to_ignore in terms_to_ignore
+            if self._normalize_text_for_match(term_to_ignore) in normalized_value
+        ]
         return bool(invalid_terms_found)
 
     def is_game_looking_for(self, game_title: str, product_found_title: str, similary_limit: float = None) -> bool:
