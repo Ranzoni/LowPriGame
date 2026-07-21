@@ -45,13 +45,7 @@ jobs:
         
     - name: Instalar os pacotes
       run: pip install -r requirements.txt
-
-    - name: Pular execução sem CONNECTION_STRING
-      if: ${{ env.CONNECTION_STRING == '' }}
-      run: |
-        echo "CONNECTION_STRING não configurada. Execução ignorada."
-        exit 0
       
     - name: Iniciar o registro de preços
-      if: ${{ env.CONNECTION_STRING != '' }}
+      if: env.CONNECTION_STRING != ''
       run: python main.py update-prices-history
