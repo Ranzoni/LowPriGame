@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      CONNECTION_STRING: ${{ secrets.CONECTION_STRING }}
+      CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
       
       EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
       EMAIL_USER: ${{ secrets.EMAIL_USER }}
