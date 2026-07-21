@@ -1,0 +1,50 @@
+name: Update prices history
+
+on:
+  schedule:
+    - cron: "0 14 * * 2"
+
+jobs:
+  executar:
+
+    runs-on: ubuntu-latest
+    
+    env:
+      CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+      
+      EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+      EMAIL_USER: ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+      EMAIL_MAX_NETWORK_RETRIES: 3
+      EMAIL_DESTINATION: ${{ secrets.EMAIL_DESTINATION }}
+      
+      ISTHERANYDEAL_API_URL: https://api.isthereanydeal.com
+      ISTHERANYDEAL_API_KEY: ${{ secrets.EMAIL_DESTINATION }}
+      ISTHERANYDEAL_API_TIMEOUT: 20
+      
+      BUSCAPE_URL: https://www.buscape.com.br
+      
+      KABUM_URL: https://www.kabum.com.br
+      
+      MERCADOLIVRE_URL: https://lista.mercadolivre.com.br
+      
+      PSDPRICES_URL: https://psprices.com
+      
+      GAME_SIMILARITY: 0.7849
+      TERMS_TO_IGNORE: Xbox
+
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configurar o Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        
+    - name: Instalar os pacotes
+      run: pip install -r requirements.txt
+      
+    - name: Iniciar a registro de preços
+      run: python main.py update-prices-history
