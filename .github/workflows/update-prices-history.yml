@@ -49,7 +49,7 @@ jobs:
     - name: Iniciar o registro de preços
       run: |
         if [ -z "${CONNECTION_STRING}" ]; then
-          echo "CONNECTION_STRING não configurado. Execução ignorada."
+          echo "::warning::CONNECTION_STRING não configurado. Execução ignorada."
           exit 0
         fi
         python main.py update-prices-history
