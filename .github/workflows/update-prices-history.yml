@@ -3,7 +3,7 @@ name: Update prices history
 on:
   schedule:
     - cron: "15 14 * * 2"
-
+   
 jobs:
   executar:
 
@@ -20,7 +20,7 @@ jobs:
       EMAIL_DESTINATION: ${{ secrets.EMAIL_DESTINATION }}
       
       ISTHERANYDEAL_API_URL: https://api.isthereanydeal.com
-      ISTHERANYDEAL_API_KEY: ${{ secrets.EMAIL_DESTINATION }}
+      ISTHERANYDEAL_API_KEY: ${{ secrets.ISTHERANYDEAL_API_KEY }}
       ISTHERANYDEAL_API_TIMEOUT: 20
       
       BUSCAPE_URL: https://www.buscape.com.br
