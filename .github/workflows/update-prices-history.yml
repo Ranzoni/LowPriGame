@@ -9,6 +9,7 @@ jobs:
   executar:
 
     runs-on: ubuntu-latest
+    environment: LPG_Environment
     
     env:
       CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
