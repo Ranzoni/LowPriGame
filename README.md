@@ -106,6 +106,7 @@ Tabelas usadas pela aplicação:
 - `games` (id, name)
 - `platforms` (id, name, type)
 - `game_price_history` (id, games_id, platforms_id, price, updated_at)
+- `notified_discount_history` (game_name, discount_price, store, product_link, platform, notified_at)
 - `blacklist` (url)
 
 Observação sobre `platforms.type`:

@@ -68,6 +68,22 @@ CREATE INDEX IF NOT EXISTS idx_game_price_history_game_platform
 CREATE INDEX IF NOT EXISTS idx_game_price_history_updated_at
     ON game_price_history (updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS notified_discount_history (
+    id BIGSERIAL PRIMARY KEY,
+    game_name TEXT NOT NULL,
+    discount_price NUMERIC(12, 2) NOT NULL CHECK (discount_price >= 0),
+    store TEXT NOT NULL,
+    product_link TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    notified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_notified_discount_history
+        UNIQUE (game_name, discount_price, store, product_link, platform)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notified_discount_history_notified_at
+    ON notified_discount_history (notified_at DESC);
+
 -- Valores esperados pelo enum do projeto:
 -- 1 = PS5
 -- 2 = SWITCH
@@ -83,6 +99,7 @@ COMMIT;
 ## Observacoes
 
 - O projeto usa as colunas `games_id` e `platforms_id` em `game_price_history`.
+- O projeto usa a tabela `notified_discount_history` para impedir reenvio de notificacoes com os mesmos dados (jogo, preco com desconto, loja, link e plataforma).
 - Em `terms_to_ignore`, os termos podem ser armazenados separados por virgula no campo `terms`.
 - Ao excluir um registro em `games` ou `platforms`, os registros relacionados em `game_price_history` serao removidos automaticamente por cascade.
 - Se voce quiser apagar toda a base em ambiente de teste, use `TRUNCATE ... CASCADE` com cuidado.

@@ -7,6 +7,9 @@ from services.games_service import get_games_list, register_games
 from services.email_service import build_sales_email_body
 from providers.bucket_providers import get_providers, get_scraping_providers
 from infra.email_sender import send_email
+from infra.database import Database
+from shared.models import GamePrice
+import psycopg
 
 
 load_dotenv()
@@ -17,7 +20,6 @@ def _configure_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +60,31 @@ def _search_sales(games: list[str]) -> None:
         logger.info("Nenhuma promoção encontrada.")
         return
 
-    logger.info("Foram encontradas %s promoções. Montando e-mail.", len(games_price))
-    email_body = build_sales_email_body(games_price)
+    db = Database()
 
-    success = send_email("Promoções encontradas!", email_body)
+    def _process_notifications(conn: psycopg.Connection) -> list[GamePrice]:
+        unnotified_sales = db.get_unnotified_sales(sales=games_price, conn=conn)
 
-    if not success:
-        raise SystemExit("Falha ao enviar e-mail")
+        if not unnotified_sales:
+            return []
+
+        logger.info("%s promocoes novas encontradas. Montando e-mail.", len(unnotified_sales))
+        email_body = build_sales_email_body(unnotified_sales)
+        email_sent = send_email("Promoções encontradas!", email_body)
+
+        if not email_sent:
+            raise RuntimeError("Falha ao enviar e-mail")
+
+        db.add_notified_sales(sales=unnotified_sales, conn=conn)
+        return unnotified_sales
+
+    notified_sales = db.execute_in_transaction(_process_notifications)
+
+    if not notified_sales:
+        logger.info("Nenhuma nova promocao para notificar (ja enviadas anteriormente).")
+        return
+
+    logger.info("%s promocoes notificadas e registradas no historico.", len(notified_sales))
 
 def main() -> None:
     parser = argparse.ArgumentParser()
