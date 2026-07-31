@@ -34,7 +34,7 @@ jobs:
       PSDPRICES_URL: https://psprices.com
       
       GAME_SIMILARITY: 0.7849
-      TERMS_TO_IGNORE: Xbox
+      TERMS_TO_IGNORE: Xbox, Wii
 
 
     steps:
