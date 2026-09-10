@@ -60,10 +60,16 @@ def _search_sales(games: list[str]) -> None:
         logger.info("Nenhuma promoção encontrada.")
         return
 
+    sales_to_notify = [sale for sale in games_price if sale.price < 200]
+
+    if not sales_to_notify:
+        logger.info("Nenhuma promoção com preço com desconto inferior a R$ 200,00 para notificar.")
+        return
+
     db = Database()
 
     def _process_notifications(conn: psycopg.Connection) -> list[GamePrice]:
-        unnotified_sales = db.get_unnotified_sales(sales=games_price, conn=conn)
+        unnotified_sales = db.get_unnotified_sales(sales=sales_to_notify, conn=conn)
 
         if not unnotified_sales:
             return []

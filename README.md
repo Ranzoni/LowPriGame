@@ -129,7 +129,8 @@ Use o Python do venv:
 O que acontece:
 - Consulta todos os provedores de busca.
 - Registra logs detalhados no console por etapa/provedor/plataforma/jogo.
-- Se encontrar promoções, monta e envia e-mail.
+- Envia e-mail apenas para promoções novas cujo preço com desconto seja inferior a R$ 200,00 (R$ 199,99 é permitido; R$ 200,00 não).
+- O limite se aplica somente às notificações: a busca e o registro do histórico continuam monitorando todos os preços.
 
 ### 2) Registrar histórico de preços
 
