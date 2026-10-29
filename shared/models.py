@@ -15,3 +15,10 @@ class GamePrice(BaseModel):
     link: Optional[str] = None
     voucher: Optional[str] = None
     platforms: Optional[list[str]] = None
+
+
+class GameToMonitor(BaseModel):
+    """A game and, optionally, the platforms on which it should be monitored."""
+
+    name: str
+    platforms: list[str] | None = None

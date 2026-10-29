@@ -10,12 +10,13 @@ from shared.functions import calculate_discount
 from providers.sales_provider import SalesProvider
 from infra.database import Database
 from infra.environment_variables import load_config
+from shared.models import GameToMonitor
 
 
 class IsThereAnyDealProvider(SalesProvider):
     logger = logging.getLogger(__name__)
 
-    def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
+    def __init__(self, games: list[GameToMonitor], sentence_transformer: SentenceTransformer):
         config = load_config({
             "url": "ISTHERANYDEAL_API_URL",
             "key": "ISTHERANYDEAL_API_KEY",
@@ -132,6 +133,21 @@ class IsThereAnyDealProvider(SalesProvider):
                     continue
 
             platforms = [drm.name for drm in sale.current.drm if drm.name]
+            available_platforms = [*platforms]
+            available_platforms.extend(
+                platform.name
+                for platform in sale.current.platforms
+                if platform.name and platform.name not in available_platforms
+            )
+
+            if not self.are_sale_platforms_enabled(title, available_platforms):
+                self.logger.info(
+                    "[%s] Resultado ignorado por plataforma nao configurada: jogo='%s' plataformas=%s.",
+                    self.provider_name,
+                    title,
+                    ", ".join(available_platforms),
+                )
+                continue
 
             discount, discount_percentage = calculate_discount(
                 regular_price=sale.current.regular.amount,

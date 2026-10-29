@@ -9,7 +9,7 @@ O ponto de entrada e o arquivo `main.py`.
 Fluxo principal:
 1. Carrega variáveis de ambiente via `.env`.
 2. Configura logging no console.
-3. Lê a lista de jogos em `games.json`.
+3. Lê a lista de jogos e as plataformas desejadas em `games.json`.
 4. Sincroniza os jogos no banco (adiciona novos e remove os que saíram da lista).
 5. Executa uma ação:
    - `search-sales`: busca promoções e envia e-mail quando encontra.
@@ -36,10 +36,44 @@ Registro de histórico (`update-prices-history`) usa apenas provedores de scrapi
 - Ignora links em blacklist no banco.
 - Para detectar promoção no scraping, compara preço atual com a mediana dos últimos 90 dias no histórico.
 
+## Configuração dos jogos e plataformas
+
+Em `games.json`, cada item de `games` pode ser somente uma string (formato
+legado) ou um objeto. A string e um objeto sem `platforms` pesquisam todas as
+plataformas já atendidas pelo robô. Para restringir um jogo, use:
+
+```json
+{
+  "games": [
+    "Jogo pesquisado em todas as plataformas",
+    {
+      "name": "Jogo apenas para consoles",
+      "platforms": ["PS5", "Switch"]
+    },
+    {
+      "name": "Jogo apenas para PC",
+      "platforms": ["Steam"]
+    }
+  ]
+}
+```
+
+O valor de `platforms` é uma lista de nomes de plataforma. A comparação não
+distingue maiúsculas, minúsculas ou acentos. Use o nome exibido pelo provedor:
+`PS5` e `Switch` para as plataformas cadastradas no banco e pesquisadas pelos
+scrapers/PSPrices; para IsThereAnyDeal, use o nome do DRM/plataforma retornado
+por ele, como `Steam`, `GOG` ou `Epic Games Store`. Um array vazio (`[]`) tem o
+mesmo significado de omitir `platforms`: todas as plataformas.
+
+O filtro é aplicado tanto em `search-sales` quanto em
+`update-prices-history`. Assim, o histórico salvo em `game_price_history`
+continua associado à plataforma específica (`platforms_id`) e só recebe preços
+das plataformas habilitadas para o jogo.
+
 ## Estrutura do projeto
 
 - `main.py`: orquestração das ações
-- `games.json`: lista de jogos monitorados
+- `games.json`: jogos monitorados e, opcionalmente, suas plataformas
 - `infra/`: acesso a banco, e-mail e variáveis de ambiente
 - `providers/`: integrações com APIs e scrapers
 - `services/`: serviços de jogos e e-mail
@@ -142,6 +176,17 @@ O que acontece:
 - Itera provedores de scraping.
 - Busca produtos por jogo e plataforma.
 - Filtra resultados válidos e persiste no histórico.
+
+## Testes
+
+Os testes unitários cobrem a leitura de `games.json` e a regra de filtro de
+plataformas. O teste de integração exercita a configuração junto ao provedor
+IsThereAnyDeal, simulando as bordas de banco e HTTP para não exigir rede nem
+PostgreSQL.
+
+```bash
+./venv/bin/python -m unittest discover -s tests -v
+```
 
 ## Logs e troubleshooting
 

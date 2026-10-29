@@ -6,11 +6,12 @@ from sentence_transformers.util import cos_sim
 
 from infra.database import Database
 from shared.models import GamePrice
+from shared.models import GameToMonitor
 from infra.environment_variables import load_config
 
 
 class SalesProvider:
-    def __init__(self, games: list[str], url: str, sentence_transformer: SentenceTransformer, timeout: int = None, provider_name: str = None):
+    def __init__(self, games: list[GameToMonitor], url: str, sentence_transformer: SentenceTransformer, timeout: int = None, provider_name: str = None):
         self.__provider_name = provider_name
         self.__games = games
         self.__url = url
@@ -27,7 +28,7 @@ class SalesProvider:
 
     @property
     def games(self) -> list[str]:
-        return self.__games
+        return [game.name for game in self.__games]
 
     @property
     def url(self) -> str:
@@ -40,6 +41,33 @@ class SalesProvider:
     @property
     def sentence_transformer(self) -> SentenceTransformer:
         return self.__sentence_transformer
+
+    def is_platform_enabled(self, game_name: str, platform_name: str) -> bool:
+        """Return whether a platform is enabled for a game.
+
+        An omitted or empty list preserves the legacy behaviour: all platforms
+        supported by the provider are searched.
+        """
+        game = next((item for item in self.__games if item.name.casefold() == game_name.casefold()), None)
+        if not game or not game.platforms:
+            return True
+
+        normalized_platform = self._normalize_text_for_match(platform_name)
+        return normalized_platform in {
+            self._normalize_text_for_match(platform)
+            for platform in game.platforms
+        }
+
+    def are_sale_platforms_enabled(self, game_name: str, platform_names: list[str]) -> bool:
+        """Check a provider result against a game's optional platform filter."""
+        game = next((item for item in self.__games if item.name.casefold() == game_name.casefold()), None)
+        if not game or not game.platforms:
+            return True
+
+        return any(
+            self.is_platform_enabled(game_name, platform_name)
+            for platform_name in platform_names
+        )
     
     def _normalize_text_for_match(self, value: str) -> str:
         normalized = unicodedata.normalize("NFD", value or "")

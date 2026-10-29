@@ -6,10 +6,11 @@ from sentence_transformers import SentenceTransformer
 
 from infra.environment_variables import load_config
 from providers.sales_scraping_provider import PriceFound, SalesScrapingProvider
+from shared.models import GameToMonitor
 
 
 class KabumProvider(SalesScrapingProvider):
-    def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
+    def __init__(self, games: list[GameToMonitor], sentence_transformer: SentenceTransformer):
         config = load_config({
             "url": "KABUM_URL",
         })

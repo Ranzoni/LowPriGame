@@ -6,10 +6,11 @@ from typing import override
 
 from providers.sales_scraping_provider import SalesScrapingProvider, PriceFound
 from infra.environment_variables import load_config
+from shared.models import GameToMonitor
 
 
 class BuscapeProvider(SalesScrapingProvider):
-    def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
+    def __init__(self, games: list[GameToMonitor], sentence_transformer: SentenceTransformer):
         config = load_config({
             "url": "BUSCAPE_URL",
         })

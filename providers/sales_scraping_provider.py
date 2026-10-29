@@ -8,6 +8,7 @@ from providers.sales_provider import SalesProvider
 from shared.models import GamePrice, PriceInfo
 from shared.functions import calculate_median, calculate_discount
 from infra.database import Database, Game, Platform
+from shared.models import GameToMonitor
 
 
 class PriceFound(BaseModel):
@@ -19,7 +20,7 @@ class PriceFound(BaseModel):
 class SalesScrapingProvider(SalesProvider):
     logger = logging.getLogger(__name__)
 
-    def __init__(self, provider_name: str, games: list[str], url: str, search_path: str, sentence_transformer: SentenceTransformer):
+    def __init__(self, provider_name: str, games: list[GameToMonitor], url: str, search_path: str, sentence_transformer: SentenceTransformer):
         self.__search_path = search_path
 
         super().__init__(
@@ -49,6 +50,8 @@ class SalesScrapingProvider(SalesProvider):
                     self.logger.info("[%s] Iterando plataforma %s para registro.", self.provider_name, platform.name)
 
                     for game_name in self.games:
+                        if not self.is_platform_enabled(game_name, platform.name):
+                            continue
                         try:
                             self.__register_game_prices(
                                 db=db,
@@ -86,6 +89,8 @@ class SalesScrapingProvider(SalesProvider):
                     self.logger.info("[%s] Iterando plataforma %s na busca de promocoes.", self.provider_name, platform.name)
 
                     for game_name in self.games:
+                        if not self.is_platform_enabled(game_name, platform.name):
+                            continue
                         try:
                             discount_found = self.__search_discount_for_game(
                                 db=db,

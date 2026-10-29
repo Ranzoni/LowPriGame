@@ -11,12 +11,13 @@ from infra.environment_variables import load_config
 from providers.sales_provider import SalesProvider
 from shared.enums import PlatformType
 from shared.models import GamePrice, PriceInfo
+from shared.models import GameToMonitor
 
 
 class PSPricesProvider(SalesProvider):
     logger = logging.getLogger(__name__)
 
-    def __init__(self, games: list[str], sentence_transformer: SentenceTransformer):
+    def __init__(self, games: list[GameToMonitor], sentence_transformer: SentenceTransformer):
         config = load_config({
             "url": "PSDPRICES_URL"
         })
@@ -46,6 +47,8 @@ class PSPricesProvider(SalesProvider):
                     self.logger.info("[%s] Iterando plataforma %s.", self.provider_name, platform.name)
 
                     for game in self.games:
+                        if not self.is_platform_enabled(game, platform.name):
+                            continue
                         try:
                             self.logger.info("[%s] Buscando jogo '%s' na plataforma %s.", self.provider_name, game, platform.name)
                             prices.extend(self.__get_game_prices(

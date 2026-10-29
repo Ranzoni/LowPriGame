@@ -8,7 +8,7 @@ from services.email_service import build_sales_email_body
 from providers.bucket_providers import get_providers, get_scraping_providers
 from infra.email_sender import send_email
 from infra.database import Database
-from shared.models import GamePrice
+from shared.models import GamePrice, GameToMonitor
 import psycopg
 
 
@@ -23,7 +23,7 @@ def _configure_logging() -> None:
 
 logger = logging.getLogger(__name__)
 
-def _register_prices(games: list[str]) -> None:
+def _register_prices(games: list[GameToMonitor]) -> None:
     logger.info("Iniciando atualização do histórico de preços para %s jogos.", len(games))
     providers = get_scraping_providers(games)
 
@@ -38,7 +38,7 @@ def _register_prices(games: list[str]) -> None:
                 provider.provider_name,
             )
 
-def _search_sales(games: list[str]) -> None:
+def _search_sales(games: list[GameToMonitor]) -> None:
     games_price = []
 
     logger.info("Iniciando busca de promoções para %s jogos.", len(games))
